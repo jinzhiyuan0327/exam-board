@@ -1,0 +1,123 @@
+/* 全屏考试提醒浮层 —— 5 种设计风格各自对应提醒样式。 */
+.eao {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+.eao.is-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .eao { transition: none; } }
+
+.eao-hero { margin: 0; font-weight: 800; letter-spacing: 2px; line-height: 1.02; font-variant-numeric: tabular-nums; }
+.eao-hero--xl { font-size: clamp(96px, 22vw, 340px); }
+.eao-hero--lg { font-size: clamp(72px, 14vw, 200px); }
+.eao-hero--md { font-size: clamp(52px, 9vw, 128px); }
+.eao-title { margin: 0; font-size: clamp(28px, 4.4vw, 64px); font-weight: 700; }
+.eao-examline { margin: 0; font-size: clamp(18px, 2.2vw, 30px); opacity: .82; letter-spacing: 1px; }
+
+/* ————— 居中类公共骨架 ————— */
+.eao--centered .eao-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 28px 48px; font-size: clamp(16px, 1.8vw, 24px); font-weight: 600;
+}
+.eao--centered .eao-center {
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+  text-align: center; padding: 0 6vw; max-width: 1400px;
+}
+.eao-capsule {
+  display: inline-block; padding: 8px 26px; border-radius: 999px;
+  font-size: clamp(18px, 2.2vw, 30px); font-weight: 700; letter-spacing: 3px;
+}
+.eao-divider { width: min(520px, 60vw); height: 2px; }
+.eao--centered .eao-subbar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 26px 48px; font-size: clamp(18px, 2.4vw, 34px); font-weight: 600;
+}
+.eao-sync { display: inline-flex; align-items: center; gap: 8px; opacity: .78; }
+.eao-sync-dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; opacity: .5; }
+.eao-sync.is-ok .eao-sync-dot { background: #35c07f; opacity: 1; }
+
+/* 主视觉与主标题采用语义色 */
+.eao--centered .eao-hero { color: var(--accent); }
+.eao--centered .eao-title { color: var(--accent); }
+
+/* —— 01 深色指挥舱 —— */
+.eao--cmd { background:
+  radial-gradient(1200px 600px at 50% -10%, rgba(255,255,255,.05), transparent 60%),
+  linear-gradient(#0b1020, #0b1020),
+  repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, transparent 1px 46px),
+  repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 1px, transparent 1px 46px);
+  background-blend-mode: normal; color: #fff; }
+.eao--cmd .eao-topbar { color: #cdd7ec; border-bottom: 1px solid rgba(255,255,255,.08); }
+.eao--cmd .eao-capsule { background: color-mix(in srgb, var(--accent) 22%, #111b31); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.eao--cmd .eao-divider { background: rgba(255,255,255,.16); }
+.eao--cmd .eao-examline { color: #cdd7ec; }
+.eao--cmd .eao-subbar { color: #e7ecf6; border-top: 1px solid rgba(255,255,255,.08); }
+.eao--cmd .eao-side { position: absolute; top: 0; bottom: 0; width: 8px; background: var(--accent); opacity: .9; }
+.eao--cmd .eao-side--l { left: 0; } .eao--cmd .eao-side--r { right: 0; }
+
+/* —— 02 清爽聚焦（浅色） —— */
+.eao--clean { background: #f7fafe; color: #132b3b; }
+.eao--clean .eao-topbar { color: #4a6a80; border-bottom: 1px solid #e3ecf5; }
+.eao--clean .eao-capsule { background: var(--soft); color: var(--accent); }
+.eao--clean .eao-center { background: #fff; border: 1px solid #d8e5f3; border-radius: 28px; padding: 56px 6vw; box-shadow: 0 24px 60px rgba(20,60,110,.10); }
+.eao--clean .eao-divider { background: #e0e9f3; }
+.eao--clean .eao-examline { color: #4a6a80; }
+.eao--clean .eao-subbar { color: #2b4658; }
+
+/* —— 03 校园黑板 —— */
+.eao--chalk { background:
+  radial-gradient(1200px 700px at 50% 40%, #1a4a3f, #153e35 70%); color: #f8fbf5; }
+.eao--chalk .eao-topbar { color: #cfe4d7; border-bottom: 1px dashed #416c60; }
+.eao--chalk .eao-capsule { background: transparent; color: var(--accent); letter-spacing: 4px; }
+.eao--chalk .eao-hero { color: var(--accent); text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.eao--chalk .eao-title { color: #f0f6ec; }
+.eao--chalk .eao-divider { background: #416c60; }
+.eao--chalk .eao-examline { color: #cfe4d7; }
+.eao--chalk .eao-subbar { color: #eaf3e6; border-top: 1px dashed #416c60; }
+
+/* ————— 04 高对比应急（上下色条） ————— */
+.eao--emergency { background: #101214; color: #fff; justify-content: space-between; }
+.eao-emg-bar { width: 100%; min-height: 150px; background: var(--accent); color: #101214;
+  display: flex; align-items: center; padding: 0 56px; }
+.eao-emg-bar--top { justify-content: space-between; }
+.eao-emg-bar--bottom { justify-content: center; }
+.eao-emg-brand { font-size: clamp(18px, 2.2vw, 30px); font-weight: 800; letter-spacing: 3px; }
+.eao-emg-label { font-size: clamp(22px, 2.8vw, 40px); font-weight: 900; letter-spacing: 4px; }
+.eao-emg-sub { font-size: clamp(20px, 2.6vw, 38px); font-weight: 800; text-align: center; }
+.eao-emg-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; padding: 0 6vw; }
+.eao--emergency .eao-title { color: var(--accent); }
+.eao--emergency .eao-hero { color: #fff; }
+.eao--emergency .eao-examline { color: #c8ccd2; }
+
+/* ————— 06 编辑排版（左对齐） ————— */
+.eao--editorial { background: #f2eee5; color: #23201a; flex-direction: row; align-items: stretch; justify-content: flex-start; }
+.eao-edit-rail { width: 105px; flex: 0 0 105px; }
+.eao-edit-rail--left { background: var(--accent); }
+.eao-edit-rail--right { background: #183a37; display: flex; align-items: center; justify-content: center; }
+.eao-edit-vtext { color: #f2eee5; font-weight: 800; letter-spacing: 8px; font-size: clamp(20px, 2.2vw, 34px);
+  writing-mode: vertical-rl; text-orientation: mixed; }
+.eao-edit-main { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 18px; padding: 0 7vw; text-align: left; align-items: flex-start; }
+.eao-edit-kicker { margin: 0; font-size: clamp(16px, 1.8vw, 26px); font-weight: 800; letter-spacing: 6px; color: #183a37; }
+.eao-edit-en { margin: 0; font-size: clamp(18px, 2vw, 30px); font-weight: 700; letter-spacing: 4px; color: var(--accent); }
+.eao--editorial .eao-title { color: #23201a; }
+.eao--editorial .eao-hero { color: #183a37; text-align: left; }
+.eao-edit-line { width: min(560px, 70%); height: 2px; background: #bbb4a8; }
+.eao--editorial .eao-examline { color: #5b564c; }
+.eao-edit-sub { margin: 0; font-size: clamp(18px, 2.2vw, 32px); font-weight: 600; color: #3a362e; }
+
+@media (max-width: 720px) {
+  .eao--centered .eao-topbar, .eao--centered .eao-subbar { padding: 18px 22px; }
+  .eao-emg-bar { padding: 0 24px; min-height: 110px; }
+  .eao-edit-rail { width: 56px; flex-basis: 56px; }
+  .eao-edit-main { padding: 0 26px; }
+}

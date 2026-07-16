@@ -1,0 +1,3 @@
+/* ===== 考试大屏宿主容器 ===== */
+/* 多版设计切换入口已拆到独立的 design-switcher.css 悬浮窗。 */
+.exam-root { position: fixed; inset: 0; }
