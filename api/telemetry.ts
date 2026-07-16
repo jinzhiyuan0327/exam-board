@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash } from 'node:crypto';
 import { telemetryConfig } from './_telemetryConfig.js';
 
-// —— 遥测配置（作者端收集器）——
+// —— 遥测配置（收集器）——
 // 客户端部署者无需配置这些；仅需设置 DATABASE_URL 与 ADMIN_PASSWORD。
 // 密钥只存在于本服务端函数中，不会随浏览器包体下发。
 //

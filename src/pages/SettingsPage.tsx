@@ -316,10 +316,10 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* ―― 公告（作者端统一发布） ―― */}
+        {/* ―― 公告 ―― */}
         <section className="set-card">
           <div className="set-card__head"><h2 className="set-card__title">📢 公告</h2></div>
-          <p className="set-card__lead">由作者端统一发布，内容以 Markdown 渲染。</p>
+          <p className="set-card__lead">内容以 Markdown 渲染</p>
           {annLoading ? (
             <p className="set-note">公告加载中…</p>
           ) : anns.length === 0 ? (

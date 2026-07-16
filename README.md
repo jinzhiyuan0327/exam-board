@@ -69,8 +69,14 @@ npm run dev
 
 ## 数据持久化说明
 
-> ⚠️ 当前 API 使用内存存储，Vercel 冷启动后数据会丢失。
-> 生产环境建议接入 Vercel KV（Redis）或 Supabase 持久化数据。
+本项目已接入 **Neon Postgres**，考试数据不会因 Vercel Serverless 冷启动、重新部署或实例切换而丢失。
+
+### 数据存储方式
+
+- 考试安排、科目/专业分组及后台维护的数据由 Vercel Serverless API 写入 Neon Postgres。
+- 前端通过 `/api/exams` 读取和保存数据；考试大屏会定时同步服务端最新数据。
+- 首次访问数据库时，服务端会自动检查并按需创建或迁移所需表结构，无需手动执行 SQL。
+- 数据库客户端与迁移任务在同一个热 Serverless 实例内会被缓存：正常请求直接查询或更新数据，不会重复执行建表操作，从而减少跨区域数据库访问延迟。
 
 ## 导入考试数据格式
 
@@ -98,7 +104,7 @@ npm run dev
 - **首次运行需同意**：首次打开会弹出数据收集须知，**不同意则无法使用**；同意后可随时在「系统设置 → 使用遥测」中暂停上报。
 - **上报内容**：实例标识、版本、主机名、时区、语言、大致地区、匿名化 IP 哈希；**不含任何考试内容或个人身份信息**。
 - **密钥内嵌**：收集器地址与上报密钥已内嵌在服务端函数 `api/telemetry.ts` 中（不会下发到浏览器）。**部署者仅需配置 `DATABASE_URL` 与 `ADMIN_PASSWORD`。**
-- **数据流向**：浏览器 → 本实例 `/api/telemetry`（服务端补全地区/IP 哈希）→ 作者端收集器 `https://telemetry.pikachu2026.space/api/collect`。
+- **数据流向**：浏览器 → 本实例 `/api/telemetry`（服务端补全地区/IP 哈希）→ 收集器 `https://telemetry.pikachu2026.space/api/collect`。
 
 
 ## 环境变量（部署配置）

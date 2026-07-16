@@ -95,7 +95,7 @@ export default function AdminPage() {
   // 统一提醒管理
   const [alerts, setAlerts] = useState<AlertsSettings>(() => getAppSettings().alerts);
   const [alertsOpen, setAlertsOpen] = useState(false);
-  // 公告展示（作者端统一发布，本端只读）
+  // 公告展示（统一发布，本端只读）
   const [announceOpen, setAnnounceOpen] = useState(false);
   const [anns, setAnns] = useState<Announcement[]>([]);
   const [annLoading, setAnnLoading] = useState(false);
@@ -483,7 +483,7 @@ export default function AdminPage() {
           <h2 className="admin-modal__title" style={{ margin: 0 }}>📢 公告</h2>
           <button className="admin-btn admin-btn--ghost" onClick={() => setAnnounceOpen(false)}>关闭</button>
         </div>
-        <p className="admin-alerts__lead">公告由作者端统一发布，内容以 Markdown 渲染；本页仅供查看。</p>
+        <p className="admin-alerts__lead">内容以 Markdown 渲染；本页仅供查看。</p>
         {annLoading ? (
           <div className="admin-announce__empty">公告加载中…</div>
         ) : anns.length === 0 ? (
