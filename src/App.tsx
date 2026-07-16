@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import WelcomePage from './pages/WelcomePage';
 import ExamPage from './pages/ExamPage';
 import AdminPage from './pages/AdminPage';
@@ -22,6 +23,7 @@ export default function App() {
       </Routes>
       </ConsentGate>
       <Analytics />
+      <SpeedInsights />
     </BrowserRouter>
   );
 }
