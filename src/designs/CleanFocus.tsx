@@ -66,7 +66,7 @@ export default function CleanFocus({ vm, onDismissNotification, onBack, onAdmin,
                 <div><span className="cf__meta-k">{phase === 'before' ? '距开考' : '已进行'}</span><span className="cf__meta-v">{phase === 'before' ? countdownText : elapsedText}</span></div>
                 <div><span className="cf__meta-k">剩余</span><span className={`cf__meta-v ${remainWarn ? 'is-warn' : ''}`}>{phase === 'live' ? remainingText : '—'}</span></div>
               </div>
-              {(phase === 'before' || phase === 'ended') && nextName && (
+              {phase === 'ended' && nextName && (
                 <p className="cf__next">下一科目　<b>{nextName}</b>　{nextStartHM}</p>
               )}
               {phase === 'ended' && !nextName && <p className="cf__next">今日考试已全部结束</p>}

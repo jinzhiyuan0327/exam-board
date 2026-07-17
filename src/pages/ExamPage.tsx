@@ -73,6 +73,18 @@ function fmtHMS(ms: number): string {
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
 }
 
+// 倒计时格式：跨天时显示“N天 HH:mm:ss”，当天内保持 HH:mm:ss。
+// 用于“距开考 / 下一场”这类可能跨多天的长倒计时，避免把天数折算成上百小时（例如把 108 天显示成 2606:16:10）。
+function fmtCountdown(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (d > 0) return `${d}天 ${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+}
+
 function fmtHM(ms: number): string {
   if (!Number.isFinite(ms)) return '—';
   const p = getZonedParts(ms, DISPLAY_TIME_ZONE);
@@ -206,7 +218,7 @@ export default function ExamPage() {
     progressPct,
     elapsedText: fmtHMS(raw.elapsedMs),
     remainingText: fmtHMS(raw.remainingMs),
-    countdownText: fmtHMS(raw.startToNowMs),
+    countdownText: fmtCountdown(raw.startToNowMs),
     nextName: raw.nextExam?.name ?? null,
     nextStartHM: raw.nextExam ? fmtHM(parseZonedTime(raw.nextExam.startTime)) : null,
     urgency: computeUrgency(raw.phase, raw.remainingMs),
@@ -237,7 +249,7 @@ export default function ExamPage() {
         loading={announcementsLoading}
         onClose={() => setAnnouncementsOpen(false)}
       />
-      {/* 设计切换窗：由各设计顶栏“▣ 切换设计”按钮触发，避免悬浮按钮遮挡大屏元素 */}
+      {/* 设计切换窗：由各设计顶栏“▣ 切换设计”按���触发，避免悬浮按钮遮挡大屏元素 */}
       <DesignSwitcher open={switcherOpen} onClose={() => setSwitcherOpen(false)} currentId={designId} onSelect={chooseDesign} />
       {/* 全屏提醒浮层：风格跟随当前展示设计自动切换 */}
       <ExamAlertOverlay

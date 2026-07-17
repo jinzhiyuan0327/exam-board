@@ -79,10 +79,12 @@ export default function Editorial({ vm, onDismissNotification, onBack, onAdmin, 
             <span className="ed__side-k">{phase === 'before' ? '距开考' : '剩余时间'}</span>
             <span className={`ed__side-v ed__side-v--big ${urgency !== 'normal' ? 'is-warn' : ''}`}>{phase === 'live' ? remainingText : phase === 'before' ? countdownText : '—'}</span>
           </div>
-          <div className="ed__side-row">
-            <span className="ed__side-k">下一科目</span>
-            <span className="ed__side-v">{nextName ? `${nextName}　${nextStartHM ?? ''}` : '无'}</span>
-          </div>
+          {phase !== 'before' && (
+            <div className="ed__side-row">
+              <span className="ed__side-k">下一科目</span>
+              <span className="ed__side-v">{nextName ? `${nextName}　${nextStartHM ?? ''}` : '无'}</span>
+            </div>
+          )}
         </>}
         <div className="ed__side-foot">请保持安静 · 诚信应考</div>
       </aside>

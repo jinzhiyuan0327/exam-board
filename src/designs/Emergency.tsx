@@ -26,7 +26,7 @@ export default function Emergency({ vm, onDismissNotification, onBack, onAdmin, 
   if (phase !== 'empty') {
     cards.push({ k: '当前状态', v: phase === 'before' ? '候考中' : phase === 'ended' ? '已结束' : '进行中' });
     cards.push({ k: '关键提醒', v: phase === 'live' ? remainingText : phase === 'before' ? countdownText : (nextName ? countdownText : '今日结束'), tone: barState });
-    cards.push({ k: '下一科目', v: nextName ? `${nextName}　${nextStartHM ?? ''}` : '无' });
+    if (phase !== 'before') cards.push({ k: '下一科目', v: nextName ? `${nextName}　${nextStartHM ?? ''}` : '无' });
   }
 
   return (

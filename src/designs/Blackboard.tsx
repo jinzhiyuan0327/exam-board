@@ -62,7 +62,7 @@ export default function Blackboard({ vm, onDismissNotification, onBack, onAdmin,
 
             <div className="bb__side bb__side--right">
               <div><span className="bb__k">温馨提醒</span><span className={`bb__v bb__remind ${remindClass}`}>{urgency === 'critical' ? '即将交卷，请检查' : urgency === 'warn' ? '接近结束，合理安排' : '保持安静 · 诚信应考'}</span></div>
-              <div><span className="bb__k">下一科目</span><span className="bb__v">{nextName ? `${nextName}　${nextStartHM ?? ''}` : '无'}</span></div>
+              {phase !== 'before' && (<div><span className="bb__k">下一科目</span><span className="bb__v">{nextName ? `${nextName}　${nextStartHM ?? ''}` : '无'}</span></div>)}
             </div>
           </div>
         ) : (
