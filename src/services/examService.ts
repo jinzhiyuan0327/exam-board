@@ -14,6 +14,33 @@ const LOGIN_URL = '/api/login';
 const TOKEN_KEY = 'admin_auth_token';
 const TOKEN_EXPIRES_KEY = 'admin_auth_token_expires';
 const CLOUD_VERSION_KEY = 'exam_cloud_updated_at';
+const CLOUD_SNAPSHOT_KEY = 'exam_cloud_snapshot';
+
+function toPayload(data: any): ExamPayload {
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    title: typeof data?.title === 'string' ? data.title : '',
+    majors: Array.isArray(data?.majors) ? data.majors : [],
+    activeMajorId: typeof data?.activeMajorId === 'string' ? data.activeMajorId : '',
+    alerts: data?.alerts && typeof data.alerts === 'object' ? data.alerts : null,
+    updatedAt: Number(data?.updatedAt ?? 0),
+  };
+}
+
+function rememberCloudSnapshot(payload: ExamPayload): void {
+  try {
+    localStorage.setItem(CLOUD_VERSION_KEY, String(payload.updatedAt));
+    localStorage.setItem(CLOUD_SNAPSHOT_KEY, JSON.stringify(payload));
+  } catch { /* 离线/隐私模式下仍可正常使用当前会话数据 */ }
+}
+
+/** 最近一次成功读取或保存的云端完整快照，是三方合并的共同基线。 */
+export function getCloudSnapshot(): ExamPayload | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CLOUD_SNAPSHOT_KEY) || 'null');
+    return parsed && typeof parsed === 'object' ? toPayload(parsed) : null;
+  } catch { return null; }
+}
 
 export async function fetchExamsFromServer(): Promise<ExamPayload | null> {
   try {
@@ -21,15 +48,9 @@ export async function fetchExamsFromServer(): Promise<ExamPayload | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (!data?.ok) return null;
-    return {
-      items: Array.isArray(data.items) ? data.items : [],
-      title: typeof data.title === 'string' ? data.title : '',
-      majors: Array.isArray(data.majors) ? data.majors : [],
-      activeMajorId: typeof data.activeMajorId === 'string' ? data.activeMajorId : '',
-      alerts: data.alerts && typeof data.alerts === 'object' ? data.alerts : null,
-      updatedAt: Number(data.updatedAt ?? 0),
-    };
-    try { localStorage.setItem(CLOUD_VERSION_KEY, String(payload.updatedAt)); } catch { /* offline-safe */ }
+    const payload = toPayload(data);
+    // 原代码在 return 后写缓存，实际从未执行；现在读取成功即同时写入版本和完整基线快照。
+    rememberCloudSnapshot(payload);
     return payload;
   } catch { return null; }
 }
@@ -43,11 +64,13 @@ export interface SaveExamsInput {
   alerts?: AlertsSettings | null;
 }
 
+export type SaveExamsResult = number | 'unauthorized' | { kind: 'conflict'; remote: ExamPayload | null } | null;
+
 /**
  * 将数据推送至服务器。
- * 返回值：成功返回 updatedAt；鉴权失败返回 'unauthorized'；其余错误（含离线）返回 null。
+ * 返回值：成功返回 updatedAt；冲突时携带服务端完整快照，供后台执行三方合并；鉴权失败返回 'unauthorized'。
  */
-export async function saveExamsToServer(input: SaveExamsInput): Promise<number | 'unauthorized' | 'conflict' | null> {
+export async function saveExamsToServer(input: SaveExamsInput): Promise<SaveExamsResult> {
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const token = localStorage.getItem(TOKEN_KEY);
@@ -64,12 +87,22 @@ export async function saveExamsToServer(input: SaveExamsInput): Promise<number |
       }),
     });
     if (res.status === 401) { logoutAdmin(); return 'unauthorized'; }
-    if (res.status === 409) return 'conflict';
+    if (res.status === 409) {
+      const data = await res.json().catch(() => null);
+      return { kind: 'conflict', remote: data?.remote ? toPayload(data.remote) : null };
+    }
     if (!res.ok) return null;
     const data = await res.json();
     if (!data?.ok) return null;
     const updatedAt = Number(data.updatedAt ?? Date.now());
-    try { localStorage.setItem(CLOUD_VERSION_KEY, String(updatedAt)); } catch { /* ignore */ }
+    rememberCloudSnapshot({
+      items: input.items,
+      title: input.title ?? '',
+      majors: input.majors ?? [],
+      activeMajorId: input.activeMajorId ?? '',
+      alerts: input.alerts ?? null,
+      updatedAt,
+    });
     return updatedAt;
   } catch { return null; }
 }

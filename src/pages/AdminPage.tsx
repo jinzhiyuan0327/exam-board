@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Watermark from '../components/Watermark';
 import type { ExamItem, MajorExam, AlertsSettings, AlertState, CustomReminder } from '../types';
 import { getAppSettings, updateExamSettings, updateAlertsSettings, genMajorId, genReminderId, DEFAULT_ALERTS, normalizeAlerts } from '../utils/appSettings';
-import { fetchExamsFromServer, hasValidLocalToken, isLoginRequired, saveExamsToServer } from '../services/examService';
+import { fetchExamsFromServer, getCloudSnapshot, hasValidLocalToken, isLoginRequired, saveExamsToServer } from '../services/examService';
+import { threeWayMergeExam } from '../utils/examMerge';
 import { fetchAnnouncements } from '../services/announcements';
 import type { Announcement } from '../services/announcements';
 import { renderMarkdown } from '../utils/renderMarkdown';
@@ -142,14 +143,41 @@ export default function AdminPage() {
     }
     setSync('saving');
     const payload = buildPayload(ms, activeId);
+    // 必须在请求前读取共同基线；409 返回后云端已是较新版本，不能再拿它当 base。
+    const baseSnapshot = getCloudSnapshot();
     const result = await saveExamsToServer(payload);
     if (result === 'unauthorized') {
       navigate('/login?next=/admin', { replace: true }); return;
     }
-    if (result === 'conflict') {
+    if (result && typeof result === 'object' && result.kind === 'conflict') {
+      if (!result.remote) {
+        pendingRef.current = true;
+        setSync('error');
+        window.alert('云端返回的冲突数据不完整，本机修改已保留；请刷新后台后再保存。');
+        return;
+      }
+      const local = { ...payload, updatedAt: baseSnapshot?.updatedAt ?? 0 };
+      const merged = threeWayMergeExam(baseSnapshot ?? result.remote, local, result.remote);
+      const { alerts: mergedAlerts, ...mergedExam } = merged.payload;
+      // 先把合并结果持久化到本机；同字段并发冲突时自动保留当前操作者的值。
+      setMajors(merged.payload.majors);
+      setActiveMajorId(merged.payload.activeMajorId);
+      updateExamSettings({ ...mergedExam, updatedAt: result.remote.updatedAt });
+      if (mergedAlerts) {
+        updateAlertsSettings({ ...mergedAlerts, updatedAt: result.remote.updatedAt });
+        setAlerts(getAppSettings().alerts);
+      }
+      const retry = await saveExamsToServer({ ...merged.payload, baseUpdatedAt: result.remote.updatedAt });
+      if (typeof retry === 'number') {
+        pendingRef.current = false;
+        updateExamSettings({ ...mergedExam, updatedAt: retry });
+        if (mergedAlerts) updateAlertsSettings({ ...mergedAlerts, updatedAt: retry });
+        setSync('saved');
+        return;
+      }
       pendingRef.current = true;
-      setSync('error');
-      window.alert('检测到另一台设备已更新云端考试数据。为避免覆盖对方修改，本机修改已保留；请恢复网络后刷新后台，确认后再保存。');
+      setSync(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'error');
+      window.alert('已自动合并本机与云端数据，但再次保存时云端又发生变化；合并结果已保留在本机，请稍后重新保存。');
       return;
     }
     if (result == null) {

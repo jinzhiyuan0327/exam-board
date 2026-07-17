@@ -135,7 +135,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               active_major_id = ${typeof activeMajorId === 'string' ? activeMajorId : ''},
               alerts = ${alerts && typeof alerts === 'object' ? JSON.stringify(alerts) : null}::jsonb,
               updated_at = ${updatedAt}
-          WHERE id = 1 AND (${expectedVersion} <= 0 OR updated_at = ${expectedVersion})
+          -- 显式 BIGINT：毫秒级 baseUpdatedAt 不能在与字面量 0 比较时被 PostgreSQL 推断为 INTEGER。
+          WHERE id = 1 AND (${expectedVersion}::BIGINT <= 0 OR updated_at = ${expectedVersion}::BIGINT)
           RETURNING updated_at
         `
       ) as unknown as UpdatedRow[];
