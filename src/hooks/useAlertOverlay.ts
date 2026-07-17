@@ -83,7 +83,7 @@ export function useAlertOverlay(input: DriverInput): AlertOverlayItem | null {
     if (!cfg || !cfg.enabled) return null;
     const isNext = state === 'next';
     const ctxExam = isNext ? inputRef.current.nextExam : exam;
-    const ctx = buildContext(exam);
+    const ctx = buildContext(ctxExam);
     const item: AlertOverlayItem = {
       key: `${exam?.id ?? 'na'}_${state}_${keySuffix}`,
       state, tone: state,
