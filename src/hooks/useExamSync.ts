@@ -37,6 +37,11 @@ export function useExamSync({ onUpdate, intervalMs = 30000 }: Options = {}) {
     };
     pull();
     const id = setInterval(pull, intervalMs);
-    return () => { cancelled = true; clearInterval(id); };
+    // PWA/离线设备恢复网络、回到前台时立即补拉云端，API 始终网络优先。
+    const onOnline = () => { void pull(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') void pull(); };
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; clearInterval(id); window.removeEventListener('online', onOnline); document.removeEventListener('visibilitychange', onVisible); };
   }, [intervalMs]);
 }

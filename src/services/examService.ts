@@ -13,6 +13,7 @@ const API_URL = '/api/exams';
 const LOGIN_URL = '/api/login';
 const TOKEN_KEY = 'admin_auth_token';
 const TOKEN_EXPIRES_KEY = 'admin_auth_token_expires';
+const CLOUD_VERSION_KEY = 'exam_cloud_updated_at';
 
 export async function fetchExamsFromServer(): Promise<ExamPayload | null> {
   try {
@@ -28,11 +29,14 @@ export async function fetchExamsFromServer(): Promise<ExamPayload | null> {
       alerts: data.alerts && typeof data.alerts === 'object' ? data.alerts : null,
       updatedAt: Number(data.updatedAt ?? 0),
     };
+    try { localStorage.setItem(CLOUD_VERSION_KEY, String(payload.updatedAt)); } catch { /* offline-safe */ }
+    return payload;
   } catch { return null; }
 }
 
 export interface SaveExamsInput {
   items: ExamItem[];
+  baseUpdatedAt?: number;
   title?: string;
   majors?: MajorExam[];
   activeMajorId?: string;
@@ -43,7 +47,7 @@ export interface SaveExamsInput {
  * 将数据推送至服务器。
  * 返回值：成功返回 updatedAt；鉴权失败返回 'unauthorized'；其余错误（含离线）返回 null。
  */
-export async function saveExamsToServer(input: SaveExamsInput): Promise<number | 'unauthorized' | null> {
+export async function saveExamsToServer(input: SaveExamsInput): Promise<number | 'unauthorized' | 'conflict' | null> {
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const token = localStorage.getItem(TOKEN_KEY);
@@ -56,13 +60,17 @@ export async function saveExamsToServer(input: SaveExamsInput): Promise<number |
         majors: input.majors ?? [],
         activeMajorId: input.activeMajorId ?? '',
         alerts: input.alerts ?? null,
+        baseUpdatedAt: input.baseUpdatedAt ?? Number(localStorage.getItem(CLOUD_VERSION_KEY) ?? 0),
       }),
     });
     if (res.status === 401) { logoutAdmin(); return 'unauthorized'; }
+    if (res.status === 409) return 'conflict';
     if (!res.ok) return null;
     const data = await res.json();
     if (!data?.ok) return null;
-    return Number(data.updatedAt ?? Date.now());
+    const updatedAt = Number(data.updatedAt ?? Date.now());
+    try { localStorage.setItem(CLOUD_VERSION_KEY, String(updatedAt)); } catch { /* ignore */ }
+    return updatedAt;
   } catch { return null; }
 }
 
@@ -98,6 +106,17 @@ export function hasValidLocalToken(): boolean {
   if (!token) return false;
   if (expires && Date.now() > expires) { logoutAdmin(); return false; }
   return true;
+}
+
+export async function changeAdminPassword(currentPassword: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem(TOKEN_KEY); if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch('/api/admin-password', { method: 'POST', headers, body: JSON.stringify({ currentPassword, newPassword }) });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.ok) return { ok: false, error: data?.error || '修改失败' };
+    logoutAdmin(); return { ok: true };
+  } catch { return { ok: false, error: '网络错误，请恢复联网后重试' }; }
 }
 
 export function logoutAdmin(): void {

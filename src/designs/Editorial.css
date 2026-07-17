@@ -6,9 +6,11 @@
 }
 .ed__rail { background:var(--red); }
 .ed__main { padding:clamp(22px,3vw,54px); display:flex; flex-direction:column; }
-.ed__head { display:flex; align-items:center; justify-content:space-between; }
-.ed__gaokao { font-size:clamp(14px,1.3vw,20px); font-weight:700; letter-spacing:.28em; color:var(--muted); }
-.ed__ghost { width:36px; height:36px; border-radius:0; background:transparent; border:1px solid var(--rule); color:var(--muted); font-size:16px; cursor:pointer; }
+.ed__head { display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; column-gap:clamp(8px,1.4vw,18px); min-width:0; }
+.ed__head-left, .ed__head-actions { display:flex; align-items:center; gap:clamp(6px,.8vw,10px); }
+.ed__head-actions { justify-content:flex-end; }
+.ed__gaokao { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; font-size:clamp(14px,1.3vw,20px); font-weight:700; letter-spacing:.28em; color:var(--muted); }
+.ed__ghost { width:36px; height:36px; flex:0 0 36px; border-radius:0; background:transparent; border:1px solid var(--rule); color:var(--muted); font-size:16px; cursor:pointer; }
 .ed__ghost:hover { border-color:var(--ink); color:var(--ink); }
 .ed__masthead { margin:clamp(10px,2vh,26px) 0 0; font-size:clamp(18px,2vw,30px); font-weight:700; letter-spacing:.04em; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ed__notify { display:inline-flex; align-items:center; gap:8px; margin-top:12px; padding:7px 13px; background:rgba(216,66,43,.1); border-left:3px solid var(--red); color:#a5301d; font-size:14px; }
@@ -26,8 +28,10 @@
 .ed__side-v { font-size:clamp(20px,1.8vw,28px); font-weight:700; }
 .ed__side-v--big { font-size:clamp(34px,4vw,68px); }
 .ed__side-v.is-warn { color:#ffb27a; }
-.ed__side-sync { font-size:12px; color:var(--side-muted); } .ed__side-sync.is-ok { color:#8fe0b4; }
+.ed__side-sync { font-size:12px; color:var(--side-muted); } .ed__side-sync.is-ok { color:#8fe0b4; } .ed__side-sync.is-wait { color:#d8b25a; } .ed__side-sync.is-off { color:#e59a9a; }
 .ed__side-foot { margin-top:auto; font-size:clamp(12px,1.1vw,15px); color:var(--side-muted); letter-spacing:.1em; border-bottom:none; }
 @media (max-width:1000px){ .ed{grid-template-columns:24px 1fr} .ed__side{display:none} }
 @media (orientation:portrait){ .ed{grid-template-columns:20px 1fr} .ed__side{display:none} .ed__hm{font-size:min(22vw,40vh)} .ed__ss{font-size:min(11vw,18vh)} .ed__ended{font-size:min(9vw,14vh)} }
+/* 手机“桌面版网站”等窄可用宽度下：顶部固定三栏，标题优先省略而不挤压右侧三枚操作按钮。 */
+@media (max-width:620px){ .ed__head{column-gap:6px} .ed__head-actions{gap:5px} .ed__ghost{width:32px;height:32px;flex-basis:32px;font-size:14px} .ed__gaokao{font-size:12px;letter-spacing:.16em} }
 @media (max-height:520px){ .ed__main{padding:clamp(12px,2vw,28px)} .ed__hm{font-size:min(16vw,42vh)} .ed__masthead{margin-top:6px} }

@@ -11,8 +11,9 @@ import { isTimeSyncReady, formatDateTimeInZone } from '../utils/timeSource';
 import { getDesignId, setDesignId } from '../utils/designPref';
 import { DESIGNS } from '../designs/registry';
 import { renderMarkdown } from '../utils/renderMarkdown';
+import AnnouncementList from '../components/AnnouncementList';
 import readmeRaw from '../../README.md?raw';
-import { hasValidLocalToken, isLoginRequired } from '../services/examService';
+import { changeAdminPassword, hasValidLocalToken, isLoginRequired } from '../services/examService';
 import { getConsent, isEnabled, setEnabled, getInstanceId, reportNow } from '../services/telemetry';
 import { checkForUpdate, getRedeployConfigured, triggerRedeploy } from '../services/update';
 import type { UpdateInfo } from '../services/update';
@@ -59,6 +60,11 @@ export default function SettingsPage() {
   const consent = getConsent();
   const [anns, setAnns] = useState<Announcement[]>([]);
   const [annLoading, setAnnLoading] = useState(true);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const toggleTele = (v: boolean) => { setEnabled(v); setTeleOn(v); };
   const reportTele = async () => {
     setTeleMsg('上报中…');
@@ -119,11 +125,30 @@ export default function SettingsPage() {
 
   const patchDesign = (id: string) => { setDesignId(id); setDesign(id); };
 
+  // 移动端：输入框聚焦时滚入可视区中央，避免软键盘顶起后被遮挡（桌面端不触发）。
+  const focusScroll = (e: React.FocusEvent<HTMLElement>) => {
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 620px)').matches) return;
+    const el = e.currentTarget;
+    window.setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+  };
+
   const openReadme = () => {
     const blob = new Blob([readmeRaw], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank', 'noopener,noreferrer');
     window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
+
+  const submitPassword = async () => {
+    if (newPassword.length < 8) { setPasswordMsg('新密码至少需要 8 位'); return; }
+    if (newPassword !== confirmPassword) { setPasswordMsg('两次输入的新密码不一致'); return; }
+    setPasswordBusy(true); setPasswordMsg('正在保存…');
+    const result = await changeAdminPassword(currentPassword, newPassword);
+    setPasswordBusy(false);
+    if (!result.ok) { setPasswordMsg(result.error || '修改失败'); return; }
+    setPasswordMsg('密码已保存至数据库，请使用新密码重新登录。');
+    setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+    window.setTimeout(() => navigate('/login?next=/settings', { replace: true }), 800);
   };
 
   const resetLocal = () => {
@@ -189,7 +214,7 @@ export default function SettingsPage() {
             <div className="set-row">
               <label className="set-label">校时间隔（秒）</label>
               <input
-                className="set-input set-input--sm" type="number" min={10} step={10}
+                className="set-input set-input--sm" type="number" min={10} step={10} inputMode="numeric"
                 value={ts.autoSyncIntervalSec}
                 onChange={e => patchTs({ autoSyncIntervalSec: Math.max(10, Number(e.target.value) || 10) }, true)}
               />
@@ -254,6 +279,19 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* ―― 管理员安全 ―― */}
+        <section className="set-card">
+          <div className="set-card__head"><h2 className="set-card__title">🔐 管理员安全</h2></div>
+          <p className="set-card__lead">修改后的密码安全哈希保存在本客户端 Neon 数据库中，后续无需再到 Vercel 修改环境变量；修改会使其他设备的旧登录失效。</p>
+          <div className="set-password-grid">
+            <input className="set-input" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} onFocus={focusScroll} placeholder="当前密码" autoComplete="current-password" />
+            <input className="set-input" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} onFocus={focusScroll} placeholder="新密码（至少 8 位）" autoComplete="new-password" />
+            <input className="set-input" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} onFocus={focusScroll} placeholder="确认新密码" autoComplete="new-password" />
+          </div>
+          <button className="set-btn set-btn--primary" disabled={passwordBusy} onClick={submitPassword}>{passwordBusy ? '保存中…' : '修改管理员密码'}</button>
+          {passwordMsg ? <p className="set-note">{passwordMsg}</p> : null}
+        </section>
+
         {/* ―― 使用遥测 ―― */}
         <section className="set-card">
           <div className="set-card__head">
@@ -298,7 +336,20 @@ export default function SettingsPage() {
           {redeploy.status !== 'idle' && redeploy.msg ? <p className={`set-note${redeploy.status === 'error' ? ' set-note--warn' : ''}`}>{redeploy.msg}</p> : null}
         </section>
 
-        {/* ―― 关于 ―― */}
+        {/* ―― 公告（作者端统一发布） ―― */}
+        <section className="set-card">
+          <div className="set-card__head"><h2 className="set-card__title">📢 公告</h2></div>
+          <p className="set-card__lead">由作者端统一发布，内容以 Markdown 渲染。</p>
+          {annLoading ? (
+            <p className="set-note">公告加载中…</p>
+          ) : anns.length === 0 ? (
+            <p className="set-note">暂无公告。</p>
+          ) : (
+            <AnnouncementList announcements={anns} formatTime={value => formatDateTimeInZone(value)} />
+          )}
+        </section>
+
+        {/* ―― 关于（置于页面最底部） ―― */}
         <section className="set-card">
           <div className="set-card__head"><h2 className="set-card__title">ℹ️ 关于</h2></div>
           <div className="set-about">
@@ -308,35 +359,11 @@ export default function SettingsPage() {
             </div>
             <div className="set-about__actions">
               <button className="set-btn" onClick={() => setReadmeOpen(o => !o)}>{readmeOpen ? '收起 README' : '查看 README'}</button>
-              <button className="set-btn" onClick={openReadme}>在新标签页打开 README.md</button>
+              <button className="set-btn set-btn--desktop-only" onClick={openReadme}>在新标签页打开 README.md</button>
             </div>
           </div>
           {readmeOpen && (
             <div className="set-readme md-body" dangerouslySetInnerHTML={{ __html: readmeHtml }} />
-          )}
-        </section>
-
-        {/* ―― 公告 ―― */}
-        <section className="set-card">
-          <div className="set-card__head"><h2 className="set-card__title">📢 公告</h2></div>
-          <p className="set-card__lead">内容以 Markdown 渲染</p>
-          {annLoading ? (
-            <p className="set-note">公告加载中…</p>
-          ) : anns.length === 0 ? (
-            <p className="set-note">暂无公告。</p>
-          ) : (
-            <div className="set-ann-list">
-              {anns.map(a => (
-                <article className="set-ann" key={a.id}>
-                  <div className="set-ann__title">
-                    {a.pinned ? <span className="set-ann__pin">📌</span> : null}
-                    {a.title || '（无标题）'}
-                  </div>
-                  <div className="set-ann__body md-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(a.content) }} />
-                  <div className="set-ann__meta">更新于 {formatDateTimeInZone(Number(a.updated_at))}</div>
-                </article>
-              ))}
-            </div>
           )}
         </section>
       </div>

@@ -83,12 +83,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'POST') {
-      if (isPasswordRequired()) {
+      if (await isPasswordRequired()) {
         const token = extractBearer(req.headers.authorization);
-        if (!verifyToken(token)) { res.status(401).json({ ok: false, error: 'Unauthorized' }); return; }
+        if (!await verifyToken(token)) { res.status(401).json({ ok: false, error: 'Unauthorized' }); return; }
       }
-      const { items, title, majors, activeMajorId, alerts } = req.body ?? {};
+      const { items, title, majors, activeMajorId, alerts, baseUpdatedAt } = req.body ?? {};
       if (!Array.isArray(items)) { res.status(400).json({ ok: false, error: 'items must be an array' }); return; }
+      const expectedVersion = Number(baseUpdatedAt ?? 0);
       const updatedAt = Date.now();
       const runUpdate = () => sql`
         UPDATE exam_data
@@ -98,14 +99,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             active_major_id = ${typeof activeMajorId === 'string' ? activeMajorId : ''},
             alerts = ${alerts && typeof alerts === 'object' ? JSON.stringify(alerts) : null}::jsonb,
             updated_at = ${updatedAt}
-        WHERE id = 1
+        WHERE id = 1 AND (${expectedVersion} <= 0 OR updated_at = ${expectedVersion})
+        RETURNING updated_at
       `;
+      let updatedRows;
       try {
-        await runUpdate();
+        updatedRows = await runUpdate();
       } catch (e) {
         if (!missingRelation(e)) throw e;
         await ensureTableOnce();
-        await runUpdate();
+        updatedRows = await runUpdate();
+      }
+      if (!updatedRows?.length) {
+        const rows = await sql`SELECT items, title, majors, active_major_id, alerts, updated_at FROM exam_data WHERE id = 1`;
+        const row = rows[0] ?? {};
+        res.status(409).json({ ok: false, error: 'Conflict', remote: { items: row.items ?? [], title: row.title ?? '', majors: row.majors ?? [], activeMajorId: row.active_major_id ?? '', alerts: row.alerts ?? null, updatedAt: Number(row.updated_at ?? 0) } });
+        return;
       }
       res.status(200).json({ ok: true, updatedAt });
       return;

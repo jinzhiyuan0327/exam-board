@@ -1,24 +1,26 @@
 import React from 'react';
 import type { DesignProps } from './types';
+import { getSyncStatus } from '../utils/syncStatus';
 import './CleanFocus.css';
 
 const SEGMENTS = 20;
 
 /** 方案 02 · 清爽聚焦 — 白底、考试蓝、低压力，适合明亮教室与投影。 */
-export default function CleanFocus({ vm, onDismissNotification, onBack, onAdmin, onSwitchDesign }: DesignProps) {
+export default function CleanFocus({ vm, onDismissNotification, onBack, onAdmin, onOpenAnnouncements, onSwitchDesign }: DesignProps) {
   const {
     masterTitle, phase, clock, dateText, currentName, startHM, endHM,
     progressPct, elapsedText, remainingText, countdownText,
-    nextName, nextStartHM, urgency, timeSynced, notification,
+    nextName, nextStartHM, urgency, timeSynced, online, notification,
   } = vm;
 
   const filled = phase === 'ended' ? SEGMENTS
     : phase === 'before' ? 0
     : Math.round((progressPct / 100) * SEGMENTS);
   const remainWarn = urgency !== 'normal';
+  const sync = getSyncStatus(online, timeSynced);
 
   const headline = phase === 'empty' ? '暂未配置考试安排'
-    : phase === 'before' ? (currentName ? `距「${currentName}」开考` : '距考试开始')
+    : phase === 'before' ? (currentName ? `下一科 ${currentName}` : '下一科待定')
     : phase === 'ended' ? (currentName ? `${currentName} 考试已结束` : '今日考试已全部结束')
     : currentName ?? '';
 
@@ -31,7 +33,8 @@ export default function CleanFocus({ vm, onDismissNotification, onBack, onAdmin,
             <span className="cf__master">{masterTitle || '考试看板'}</span>
           </div>
           <div className="cf__top-right">
-            <span className={`cf__sync ${timeSynced ? 'is-ok' : 'is-wait'}`}>{timeSynced ? '已校时' : '本地时间'}</span>
+            <span className={`cf__sync is-${sync.tone}`}>{sync.text}</span>
+            <button className="cf__ghost" onClick={onOpenAnnouncements} aria-label="查看公告" title="系统公告">📢</button>
             <button className="cf__ghost" onClick={onSwitchDesign} aria-label="切换设计" title="切换展示设计">▣</button>
             <button className="cf__ghost" onClick={onAdmin} aria-label="管理">⚙</button>
           </div>

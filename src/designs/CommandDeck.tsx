@@ -1,23 +1,25 @@
 import React from 'react';
 import type { DesignProps } from './types';
+import { getSyncStatus } from '../utils/syncStatus';
 import './CommandDeck.css';
 
 /**
  * 方案 01 · 深色指挥舱
  * 默认推荐方案：多教室电视、监考室、中控 LED。
  */
-export default function CommandDeck({ vm, onDismissNotification, onBack, onAdmin, onSwitchDesign }: DesignProps) {
+export default function CommandDeck({ vm, onDismissNotification, onBack, onAdmin, onOpenAnnouncements, onSwitchDesign }: DesignProps) {
   const {
     masterTitle, phase, clock, dateText, currentName, startHM, endHM,
     progressPct, elapsedText, remainingText, countdownText,
-    nextName, nextStartHM, urgency, timeSynced, notification,
+    nextName, nextStartHM, urgency, timeSynced, online, notification,
   } = vm;
 
   const urgencyClass = `cd cd--${phase} cd--${urgency}`;
+  const sync = getSyncStatus(online, timeSynced);
 
   const headline = () => {
     if (phase === 'empty') return '暂未配置考试安排';
-    if (phase === 'before') return `距 ${currentName ?? ''} 开考`;
+    if (phase === 'before') return currentName ? `下一科 ${currentName}` : '下一科待定';
     if (phase === 'ended') return currentName ? `${currentName} 考试已结束` : '今日考试已全部结束';
     return currentName ?? '';
   };
@@ -47,9 +49,10 @@ export default function CommandDeck({ vm, onDismissNotification, onBack, onAdmin
           <span className="cd__master">{masterTitle || '考试看板'}</span>
         </div>
         <div className="cd__top-right">
-          <span className={`cd__sync ${timeSynced ? 'cd__sync--ok' : 'cd__sync--wait'}`}>
-            {timeSynced ? '在线 · 已校时' : '本地时间'}
+          <span className={`cd__sync cd__sync--${sync.tone}`}>
+            {sync.text}
           </span>
+          <button className="cd__ghost" onClick={onOpenAnnouncements} aria-label="查看公告" title="系统公告">📢</button>
           <button className="cd__ghost" onClick={onSwitchDesign} aria-label="切换设计" title="切换展示设计">▣</button>
           <button className="cd__ghost" onClick={onAdmin} aria-label="管理后台">⚙</button>
         </div>

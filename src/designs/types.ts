@@ -24,6 +24,8 @@ export interface ExamViewModel {
   nextStartHM: string | null;
   urgency: Urgency;
   timeSynced: boolean;
+  /** 当下真实网络在线状态（navigator.onLine + online/offline 事件实时维护）。 */
+  online: boolean;
   notification: ExamNotification | null;
 }
 
@@ -32,6 +34,8 @@ export interface DesignProps {
   onDismissNotification: () => void;
   onBack: () => void;
   onAdmin: () => void;
+  /** 打开作者端统一发布的 Markdown 公告。 */
+  onOpenAnnouncements: () => void;
   /** 打开展示设计切换窗（入口位于各设计顶栏，避免悬浮按钮遮挡元素）。 */
   onSwitchDesign: () => void;
 }

@@ -23,8 +23,13 @@
 .welcome-card__icon{font-size:1.8rem;}
 .welcome-card__label{font-size:1rem;font-weight:500;}
 .welcome-card__desc{font-size:0.78rem;opacity:0.55;}
+.welcome-card__text{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;}
+.welcome-card--featured .welcome-card__text{align-items:flex-start;text-align:left;}
 .welcome-card__badge{position:absolute;top:-10px;right:14px;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;color:#fff;white-space:nowrap;}
 .welcome-card--featured .welcome-card__badge{position:static;font-size:0.85rem;padding:4px 12px;}
 .welcome-footer{margin-top:8px;}
 .welcome-countdown{display:flex;align-items:center;gap:10px;font-size:0.85rem;opacity:0.5;}
 .welcome-countdown__ring{width:36px;height:36px;flex-shrink:0;}
+
+/* 弱提示：仅无考试且浏览器可安装 PWA 时展示，不抢占首页主操作。 */
+.welcome-pwa{display:flex;align-items:center;gap:9px;color:rgba(240,240,240,.42);font-size:.73rem;letter-spacing:.01em}.welcome-pwa button{border:1px solid rgba(255,255,255,.16);border-radius:7px;background:transparent;color:rgba(240,240,240,.68);padding:4px 9px;font:inherit;cursor:pointer}.welcome-pwa button:hover{border-color:rgba(126,200,255,.5);color:#bfe3ff}.welcome-pwa .welcome-pwa__dismiss{border-color:transparent;color:rgba(240,240,240,.32);padding-left:2px;padding-right:2px}.welcome-idle-hint b{font-variant-numeric:tabular-nums;color:rgba(200,225,255,.75)}

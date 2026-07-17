@@ -1,71 +1,124 @@
-// 简单的基于令牌的鉴权工具。
-// 客户端部署时“永远只需填” DATABASE_URL 与 ADMIN_PASSWORD 两个变量：
-// 令牌密钥 TOKEN_SECRET 无需填写，部署时自动派生（仍允许显式环境变量覆盖）。
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { neon } from '@neondatabase/serverless';
+import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-const TOKEN_TTL = 24 * 60 * 60 * 1000; // 24h
+const scrypt = promisify(scryptCallback);
+const BOOTSTRAP_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const TOKEN_TTL = 24 * 60 * 60 * 1000;
 
-/**
- * 自动派生令牌密钥（无需客户端填写 TOKEN_SECRET）：
- * - 若显式设了 TOKEN_SECRET 环境变量，则优先使用（可选覆盖，最高优先级）。
- * - 否则由“后台密码 + 本项目固定标识”确定性派生：
- *   · 同一项目的所有 Serverless 实例 / 多次重新部署都得到一致密钥（令牌可互验，升级后无需重新登录）；
- *   · 不同项目（不同生产域名 / 不同密码）得到不同密钥；
- *   · 伪造令牌需先知晓 ADMIN_PASSWORD，安全性等同于密码本身。
- */
-function resolveTokenSecret(): string {
-  const explicit = process.env.TOKEN_SECRET;
-  if (explicit && explicit.trim()) return explicit.trim();
-  const site =
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
-    process.env.VERCEL_URL ||
-    'local-dev';
-  const material = ['exam-board/token-secret/v1', ADMIN_PASSWORD, site].join('|');
-  return createHash('sha256').update(material).digest('base64url');
+type AuthRow = { password_hash: string; password_salt: string; token_secret: string; token_version: number };
+let sqlClient: ReturnType<typeof neon> | null = null;
+let setupPromise: Promise<void> | null = null;
+
+function sql() {
+  if (sqlClient) return sqlClient;
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error('DATABASE_URL is not set');
+  sqlClient = neon(url);
+  return sqlClient;
 }
 
-const TOKEN_SECRET = resolveTokenSecret();
-
-export function isPasswordRequired(): boolean {
-  return !!ADMIN_PASSWORD;
+async function ensureAuthTable(): Promise<void> {
+  if (!setupPromise) setupPromise = (async () => {
+    await sql()`CREATE TABLE IF NOT EXISTS app_auth (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      password_hash TEXT NOT NULL,
+      password_salt TEXT NOT NULL,
+      token_secret TEXT NOT NULL,
+      token_version INTEGER NOT NULL DEFAULT 1,
+      initialized_at BIGINT NOT NULL,
+      updated_at BIGINT NOT NULL,
+      CHECK (id = 1)
+    )`;
+  })().catch(error => { setupPromise = null; throw error; });
+  return setupPromise;
 }
 
-export function checkPassword(pwd: string): boolean {
-  return !!ADMIN_PASSWORD && pwd === ADMIN_PASSWORD;
+async function config(): Promise<AuthRow | null> {
+  try {
+    await ensureAuthTable();
+    const rows = await sql()`SELECT password_hash, password_salt, token_secret, token_version FROM app_auth WHERE id = 1`;
+    return (rows[0] as AuthRow | undefined) ?? null;
+  } catch { return null; }
 }
 
-// 用 HMAC 对过期时间签名；密钥不再以明文形式内嵌到令牌中。
-function sign(expiresAt: number): string {
-  return createHmac('sha256', TOKEN_SECRET).update(String(expiresAt)).digest('base64url');
+async function hashPassword(password: string, salt: string): Promise<string> {
+  const key = await scrypt(password, salt, 64) as Buffer;
+  return key.toString('base64url');
 }
 
-export function generateToken(): { token: string; expiresAt: number } {
+async function matches(password: string, row: AuthRow): Promise<boolean> {
+  const actual = Buffer.from(await hashPassword(password, row.password_salt));
+  const expected = Buffer.from(row.password_hash);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+async function bootstrap(password: string): Promise<AuthRow | null> {
+  if (!BOOTSTRAP_PASSWORD || password !== BOOTSTRAP_PASSWORD) return null;
+  try {
+    await ensureAuthTable();
+    const existing = await config();
+    if (existing) return existing;
+    const salt = randomBytes(16).toString('base64url');
+    const hash = await hashPassword(password, salt);
+    const tokenSecret = randomBytes(32).toString('base64url');
+    const at = Date.now();
+    await sql()`INSERT INTO app_auth (id, password_hash, password_salt, token_secret, token_version, initialized_at, updated_at)
+      VALUES (1, ${hash}, ${salt}, ${tokenSecret}, 1, ${at}, ${at}) ON CONFLICT (id) DO NOTHING`;
+    return await config();
+  } catch { return null; }
+}
+
+export async function isPasswordRequired(): Promise<boolean> {
+  return !!(await config()) || !!BOOTSTRAP_PASSWORD;
+}
+
+/** 首次使用旧环境变量密码登录时自动迁移为 Neon 内的安全密码哈希。 */
+export async function checkPassword(password: string): Promise<boolean> {
+  const row = await config();
+  if (row) return matches(String(password ?? ''), row);
+  return !!(await bootstrap(String(password ?? '')));
+}
+
+function signature(expiresAt: number, version: number, secret: string): string {
+  return createHmac('sha256', secret).update(`${expiresAt}.${version}`).digest('base64url');
+}
+
+export async function generateToken(): Promise<{ token: string; expiresAt: number }> {
+  const row = await config();
+  if (!row) throw new Error('Authentication is not initialized');
   const expiresAt = Date.now() + TOKEN_TTL;
-  const token = Buffer.from(`${expiresAt}.${sign(expiresAt)}`).toString('base64url');
+  const token = Buffer.from(`${expiresAt}.${row.token_version}.${signature(expiresAt, row.token_version, row.token_secret)}`).toString('base64url');
   return { token, expiresAt };
 }
 
-export function verifyToken(token: string | undefined): boolean {
+export async function verifyToken(token: string | undefined): Promise<boolean> {
   if (!token) return false;
+  const row = await config();
+  if (!row) return false;
   try {
-    const decoded = Buffer.from(token, 'base64url').toString();
-    const idx = decoded.lastIndexOf('.');
-    if (idx <= 0) return false;
-    const expiresAt = parseInt(decoded.slice(0, idx), 10);
-    const sig = decoded.slice(idx + 1);
-    if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return false;
-    const expected = sign(expiresAt);
-    const a = Buffer.from(sig);
-    const b = Buffer.from(expected);
-    if (a.length !== b.length) return false;
-    return timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
+    const [expText, versionText, received] = Buffer.from(token, 'base64url').toString().split('.');
+    const expiresAt = Number(expText); const version = Number(versionText);
+    if (!Number.isFinite(expiresAt) || Date.now() > expiresAt || version !== row.token_version || !received) return false;
+    const expected = signature(expiresAt, version, row.token_secret);
+    const a = Buffer.from(received); const b = Buffer.from(expected);
+    return a.length === b.length && timingSafeEqual(a, b);
+  } catch { return false; }
+}
+
+/** 密码存入 Neon；令牌版本递增，所有旧设备立即需要重新登录。 */
+export async function changePassword(currentPassword: string, nextPassword: string): Promise<{ ok: boolean; error?: string }> {
+  if (nextPassword.length < 8) return { ok: false, error: '新密码至少需要 8 位' };
+  if (!await checkPassword(currentPassword)) return { ok: false, error: '当前密码不正确' };
+  const row = await config();
+  if (!row) return { ok: false, error: '认证尚未初始化，请使用环境变量密码登录一次' };
+  const salt = randomBytes(16).toString('base64url');
+  const hash = await hashPassword(nextPassword, salt);
+  const at = Date.now();
+  await sql()`UPDATE app_auth SET password_hash = ${hash}, password_salt = ${salt}, token_version = ${row.token_version + 1}, updated_at = ${at} WHERE id = 1`;
+  return { ok: true };
 }
 
 export function extractBearer(authHeader: string | undefined): string | undefined {
-  if (!authHeader?.startsWith('Bearer ')) return undefined;
-  return authHeader.slice(7).trim();
+  return authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : undefined;
 }

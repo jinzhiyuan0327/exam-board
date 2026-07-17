@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { telemetryConfig } from './_telemetryConfig.js';
 
-// 公告代理：转发到遥测台的公开公告接口。
-// 统一发布，各「考试看板」实例通过本代理拉取已发布公告（避免浏览器直连跨域）。
+// 公告代理：转发到作者端遥测台的公开公告接口。
+// 作者端统一发布，各「考试看板」实例通过本代理拉取已发布公告（避免浏览器直连跨域）。
 //
 // 域名集中在 ./_telemetryConfig.ts（与 /api/telemetry 共用）；随 GitHub 更新/重新部署自动应用。
 const ANNOUNCE_URL = telemetryConfig.announceUrl;

@@ -1,13 +1,14 @@
 import React from 'react';
 import type { DesignProps } from './types';
+import { getSyncStatus } from '../utils/syncStatus';
 import './Emergency.css';
 
 /** 方案 04 · 高对比应急 — 高亮 LED、远距离极速辨识，顶部状态条。 */
-export default function Emergency({ vm, onDismissNotification, onBack, onAdmin, onSwitchDesign }: DesignProps) {
+export default function Emergency({ vm, onDismissNotification, onBack, onAdmin, onOpenAnnouncements, onSwitchDesign }: DesignProps) {
   const {
     masterTitle, phase, clock, dateText, currentName, startHM, endHM,
     progressPct, elapsedText, remainingText, countdownText,
-    nextName, nextStartHM, urgency, timeSynced, notification,
+    nextName, nextStartHM, urgency, timeSynced, online, notification,
   } = vm;
 
   const barState = phase === 'ended' ? 'ended'
@@ -19,6 +20,7 @@ export default function Emergency({ vm, onDismissNotification, onBack, onAdmin, 
     : urgency === 'critical' ? `即将交卷 · 剩余 ${remainingText}`
     : urgency === 'warn' ? `接近结束 · 剩余 ${remainingText}`
     : '考试进行中';
+  const sync = getSyncStatus(online, timeSynced);
 
   const cards: Array<{ k: string; v: string; tone?: string }> = [];
   if (phase !== 'empty') {
@@ -40,7 +42,8 @@ export default function Emergency({ vm, onDismissNotification, onBack, onAdmin, 
             </div>
           </div>
           <div className="em__head-right">
-            <span className={`em__sync ${timeSynced ? 'is-ok' : 'is-wait'}`}>{timeSynced ? '在线·已校时' : '本地时间'}</span>
+            <span className={`em__sync is-${sync.tone}`}>{sync.text}</span>
+            <button className="em__ghost" onClick={onOpenAnnouncements} aria-label="查看公告" title="系统公告">📢</button>
             <button className="em__ghost" onClick={onSwitchDesign} aria-label="切换设计" title="切换展示设计">▣</button>
             <button className="em__ghost" onClick={onAdmin} aria-label="管理">⚙</button>
           </div>

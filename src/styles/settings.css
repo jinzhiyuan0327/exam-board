@@ -1,5 +1,5 @@
-/* height:100% + 内部滚动：修复 body{overflow:hidden} 导致设置页无法下滑的问题 */
-.set-page { height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #0d0d0d; color: #e9edf2; padding-bottom: 48px; }
+/* 文档自然滚动（v1.16.1）：不再用 height:100%+内部滚动，改跟随文档滚动，修复移动端地址栏/键盘下无法下滑；大屏页由 body.lock-scroll 单独锁定 */
+.set-page { min-height: 100dvh; background: #0d0d0d; color: #e9edf2; padding-bottom: max(48px, env(safe-area-inset-bottom)); }
 .set-header {
   position: sticky; top: 0; z-index: 5;
   display: flex; align-items: center; justify-content: space-between;
@@ -114,8 +114,22 @@ select.set-input { cursor: pointer; }
 
 @media (max-width: 620px) {
   .set-row { flex-direction: column; align-items: stretch; }
-  .set-input, .set-input--sm { min-width: 0; width: 100%; text-align: left; }
+  /* 输入框字号提到 16px 防止 iOS Safari 聚焦时自动放大整页（放大后更难滑动/操作） */
+  .set-input, .set-input--sm { min-width: 0; width: 100%; text-align: left; font-size: 16px; }
   .set-status__list { grid-template-columns: 1fr; }
+  .set-header { padding: 12px 16px; }
+  .set-body { padding: 16px; gap: 14px; }
+  .set-card { padding: 16px; }
+  /* 触摸目标 >= 44px，主操作按钮拉满宽更易点 */
+  .set-btn, .set-back { min-height: 44px; }
+  .set-btn--primary { width: 100%; }
+  .set-about { flex-direction: column; align-items: stretch; }
+  .set-about__actions { width: 100%; }
+  .set-about__actions .set-btn { width: 100%; }
+  /* 手机端隐藏“新标签页打开 README”（blob 常被拦截），仅保留页内展开 */
+  .set-btn--desktop-only { display: none; }
 }
 
 .set-loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0d0d0d; color: #93a0ad; font-size: 14px; }
+
+.set-password-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.set-password-grid .set-input{width:100%}@media(max-width:620px){.set-password-grid{grid-template-columns:1fr}}

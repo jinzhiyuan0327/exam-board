@@ -7,6 +7,7 @@ import { fetchExamsFromServer, hasValidLocalToken, isLoginRequired, saveExamsToS
 import { fetchAnnouncements } from '../services/announcements';
 import type { Announcement } from '../services/announcements';
 import { renderMarkdown } from '../utils/renderMarkdown';
+import AnnouncementList from '../components/AnnouncementList';
 import '../styles/admin.css';
 
 function fmtAnnTime(ms: number) {
@@ -95,7 +96,7 @@ export default function AdminPage() {
   // 统一提醒管理
   const [alerts, setAlerts] = useState<AlertsSettings>(() => getAppSettings().alerts);
   const [alertsOpen, setAlertsOpen] = useState(false);
-  // 公告展示（统一发布，本端只读）
+  // 公告展示（作者端统一发布，本端只读）
   const [announceOpen, setAnnounceOpen] = useState(false);
   const [anns, setAnns] = useState<Announcement[]>([]);
   const [annLoading, setAnnLoading] = useState(false);
@@ -144,6 +145,12 @@ export default function AdminPage() {
     const result = await saveExamsToServer(payload);
     if (result === 'unauthorized') {
       navigate('/login?next=/admin', { replace: true }); return;
+    }
+    if (result === 'conflict') {
+      pendingRef.current = true;
+      setSync('error');
+      window.alert('检测到另一台设备已更新云端考试数据。为避免覆盖对方修改，本机修改已保留；请恢复网络后刷新后台，确认后再保存。');
+      return;
     }
     if (result == null) {
       pendingRef.current = true;
@@ -483,24 +490,13 @@ export default function AdminPage() {
           <h2 className="admin-modal__title" style={{ margin: 0 }}>📢 公告</h2>
           <button className="admin-btn admin-btn--ghost" onClick={() => setAnnounceOpen(false)}>关闭</button>
         </div>
-        <p className="admin-alerts__lead">内容以 Markdown 渲染；本页仅供查看。</p>
+        <p className="admin-alerts__lead">公告由作者端统一发布，内容以 Markdown 渲染；本页仅供查看。</p>
         {annLoading ? (
           <div className="admin-announce__empty">公告加载中…</div>
         ) : anns.length === 0 ? (
           <div className="admin-announce__empty">暂无公告。</div>
         ) : (
-          <div className="admin-announce__list">
-            {anns.map(a => (
-              <article className="admin-announce__card" key={a.id}>
-                <div className="admin-announce__title">
-                  {a.pinned ? <span className="admin-announce__pin">📌</span> : null}
-                  {a.title || '（无标题）'}
-                </div>
-                <div className="admin-announce__body md-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(a.content) }} />
-                <div className="admin-announce__meta">更新于 {fmtAnnTime(Number(a.updated_at))}</div>
-              </article>
-            ))}
-          </div>
+          <AnnouncementList announcements={anns} formatTime={fmtAnnTime} />
         )}
       </div>
     </div>}

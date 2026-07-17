@@ -25,9 +25,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'POST') {
     // 鉴权：若设了管理密码，则需有效 token
-    if (isPasswordRequired()) {
+    if (await isPasswordRequired()) {
       const token = extractBearer(req.headers.authorization);
-      if (!verifyToken(token)) { res.status(401).json({ ok: false, error: 'Unauthorized' }); return; }
+      if (!await verifyToken(token)) { res.status(401).json({ ok: false, error: 'Unauthorized' }); return; }
     }
     if (!hookUrl) {
       res.status(501).json({ ok: false, code: 'NO_HOOK', error: '尚未配置 VERCEL_DEPLOY_HOOK_URL 环境变量' });

@@ -17,7 +17,7 @@
 .em__subject { margin:4px 0 0; font-size:clamp(16px,1.8vw,28px); color:var(--muted); }
 .em__head-right { display:flex; align-items:center; gap:10px; }
 .em__sync { font-size:13px; font-weight:600; padding:5px 12px; border-radius:6px; border:1px solid var(--border); }
-.em__sync.is-ok { color:#7fe0b0; } .em__sync.is-wait { color:var(--before); }
+.em__sync.is-ok { color:#7fe0b0; } .em__sync.is-wait { color:var(--before); } .em__sync.is-off { color:#ff8a8a; }
 .em__notify { align-self:flex-start; display:flex; align-items:center; gap:10px; margin-top:14px; padding:9px 15px; border-radius:8px; background:rgba(231,71,61,.14); border:1px solid rgba(231,71,61,.4); color:var(--danger-soft); font-size:15px; }
 .em__notify button { background:none; border:none; color:inherit; font-size:17px; cursor:pointer; }
 .em__clock { margin-top:auto; font-size:min(clamp(120px,20vw,340px), 46vh); font-weight:800; line-height:.92; letter-spacing:-.01em; }
@@ -36,3 +36,14 @@
 .em__empty { margin-top:20px; font-size:clamp(18px,2vw,28px); color:var(--muted); }
 @media (max-width:900px){ .em__cards{grid-template-columns:1fr} }
 @media (prefers-reduced-motion:reduce){ .em__track-fill{transition:none} }
+
+/* 公告入口加入后，小屏顶栏收紧；标题优先截断，操作按钮不重叠。 */
+@media (max-width:620px){
+  .em__head { gap:8px; }
+  .em__head-left { min-width:0; gap:8px; }
+  .em__head-left > div { min-width:0; }
+  .em__sys,.em__subject { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .em__head-right { gap:5px; flex:0 0 auto; }
+  .em__ghost { width:32px; height:32px; flex:0 0 32px; font-size:14px; }
+  .em__sync { display:none; }
+}

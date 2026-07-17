@@ -12,6 +12,9 @@ import ExamAlertOverlay from '../components/ExamAlertOverlay';
 import { getDesign } from '../designs/registry';
 import { getDesignId, setDesignId } from '../utils/designPref';
 import DesignSwitcher from '../components/DesignSwitcher';
+import ExamAnnouncementOverlay from '../components/ExamAnnouncementOverlay';
+import { fetchAnnouncements } from '../services/announcements';
+import type { Announcement } from '../services/announcements';
 import type { ExamViewModel, ExamPhaseVM, Urgency } from '../designs/types';
 import '../styles/exam.css';
 
@@ -26,7 +29,14 @@ interface RawState {
 }
 
 const WEEKDAY_CN = ['日', '一', '二', '三', '四', '五', '六'];
+const ANNOUNCEMENT_SEEN_KEY = 'exam_board_seen_announcement_version';
+const ANNOUNCEMENT_POLL_MS = 60 * 1000;
 const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function announcementVersion(list: Announcement[]): string {
+  // updated_at 随编辑/置顶状态变更而更新；仅保存版本标识，不保存公告正文。
+  return list.map(item => `${item.id}:${item.updated_at}:${item.pinned ? 1 : 0}`).join('|');
+}
 
 function getActiveExams(items: ExamItem[]): ExamItem[] {
   return items
@@ -87,8 +97,13 @@ export default function ExamPage() {
   const [title, setTitle] = useState<string>(() => getAppSettings().exam?.title ?? '');
   const [now, setNow] = useState<number>(() => nowMs());
   const [designId, setDesign] = useState<string>(() => getDesignId());
+  const [online, setOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [alerts, setAlerts] = useState<AlertsSettings>(() => getAppSettings().alerts);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const examLiveRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 数据链接：保留 30s Neon 同步，所有设计共用同一份数据（含提醒管理配置）
@@ -99,6 +114,40 @@ export default function ExamPage() {
     },
   });
 
+  // 新实例首次进入自动展示公告；运行期间每分钟检查一次，作者端更新后自动再次展示。
+  useEffect(() => {
+    let alive = true;
+    const refreshAnnouncements = async () => {
+      const list = await fetchAnnouncements(true);
+      if (!alive) return;
+      setAnnouncements(list);
+      setAnnouncementsLoading(false);
+      if (list.length === 0) return;
+      const version = announcementVersion(list);
+      try {
+        if (window.localStorage.getItem(ANNOUNCEMENT_SEEN_KEY) !== version) {
+          window.localStorage.setItem(ANNOUNCEMENT_SEEN_KEY, version);
+          if (examLiveRef.current) window.localStorage.setItem('exam_board_deferred_announcement', version);
+          else setAnnouncementsOpen(true);
+        }
+      } catch {
+        // 存储不可用时仍展示公告，避免隐私模式/受限浏览器漏掉更新。
+        setAnnouncementsOpen(true);
+      }
+    };
+    void refreshAnnouncements();
+    const intervalId = window.setInterval(() => { void refreshAnnouncements(); }, ANNOUNCEMENT_POLL_MS);
+    return () => { alive = false; window.clearInterval(intervalId); };
+  }, []);
+
+  const openAnnouncements = useCallback(() => {
+    setAnnouncementsOpen(true);
+    setAnnouncementsLoading(true);
+    void fetchAnnouncements(true)
+      .then(setAnnouncements)
+      .finally(() => setAnnouncementsLoading(false));
+  }, []);
+
   const tick = useCallback(() => setNow(nowMs()), []);
   useEffect(() => {
     tick();
@@ -106,10 +155,29 @@ export default function ExamPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [tick]);
 
+  // 状态胶囊反映当下真实网络状态：监听 online/offline，断网立即变“离线”。
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => { window.removeEventListener('online', goOnline); window.removeEventListener('offline', goOffline); };
+  }, []);
+
   // 将时间量化到整秒：大屏时钟与底部倒计时都基于同一 nowTick，
   // 确保两者在同一时刻跳变，消除偶发的 1 秒时差。
   const nowTick = Math.floor(now / 1000) * 1000;
   const raw = useMemo(() => computeRawState(items, nowTick), [items, nowTick]);
+  examLiveRef.current = raw.phase === 'live';
+  useEffect(() => {
+    if (raw.phase === 'live') return;
+    const deferred = window.localStorage.getItem('exam_board_deferred_announcement');
+    if (deferred) {
+      window.localStorage.removeItem('exam_board_deferred_announcement');
+      // 考试结束后展示考试期间收到的最新公告；结束提醒仍由最高层提醒浮层优先显示。
+      window.setTimeout(() => setAnnouncementsOpen(true), raw.phase === 'ended' ? 8500 : 0);
+    }
+  }, [raw.phase]);
   const { notification, dismiss } = useExamNotify(raw.currentExam);
 
   // 全屏提醒浮层：将通知事件与自定义提醒映射为对应设计风格的浮层
@@ -143,6 +211,7 @@ export default function ExamPage() {
     nextStartHM: raw.nextExam ? fmtHM(parseZonedTime(raw.nextExam.startTime)) : null,
     urgency: computeUrgency(raw.phase, raw.remainingMs),
     timeSynced: isTimeSyncReady(),
+    online,
     notification: inDesignNotification,
   };
 
@@ -159,7 +228,14 @@ export default function ExamPage() {
         onDismissNotification={dismiss}
         onBack={() => navigate('/')}
         onAdmin={() => navigate('/admin')}
+        onOpenAnnouncements={openAnnouncements}
         onSwitchDesign={() => setSwitcherOpen(true)}
+      />
+      <ExamAnnouncementOverlay
+        open={announcementsOpen}
+        announcements={announcements}
+        loading={announcementsLoading}
+        onClose={() => setAnnouncementsOpen(false)}
       />
       {/* 设计切换窗：由各设计顶栏“▣ 切换设计”按钮触发，避免悬浮按钮遮挡大屏元素 */}
       <DesignSwitcher open={switcherOpen} onClose={() => setSwitcherOpen(false)} currentId={designId} onSelect={chooseDesign} />

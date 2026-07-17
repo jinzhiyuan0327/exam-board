@@ -46,6 +46,7 @@
 .cd__sync::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
 .cd__sync--ok   { color: var(--ok); background: rgba(95,226,166,0.10); border-color: rgba(95,226,166,0.35); }
 .cd__sync--wait { color: var(--warning); background: rgba(255,202,101,0.10); border-color: rgba(255,202,101,0.35); }
+.cd__sync--off  { color: #ff8f8f; background: rgba(255,143,143,0.10); border-color: rgba(255,143,143,0.35); }
 
 /* 通知条 */
 .cd__notify {
@@ -131,4 +132,12 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .cd__track-fill { transition: none; }
+}
+
+/* 公告入口加入后，小屏顶栏收紧间距，保证状态、公告、设计和管理入口同排可用。 */
+@media (max-width:620px){
+  .cd__top { gap:8px; }
+  .cd__top-right { gap:6px; min-width:0; }
+  .cd__ghost { width:34px; height:34px; flex:0 0 34px; font-size:14px; }
+  .cd__sync { padding:5px 8px; font-size:11px; white-space:nowrap; }
 }

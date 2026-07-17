@@ -1,13 +1,14 @@
 import React from 'react';
 import type { DesignProps } from './types';
+import { getSyncStatus } from '../utils/syncStatus';
 import './Editorial.css';
 
 /** 方案 05 · 编辑排版 — 三栏构图，朱红竖条 + 暖米白主区 + 深墨绿信息栏，秒数朱红。 */
-export default function Editorial({ vm, onDismissNotification, onBack, onAdmin, onSwitchDesign }: DesignProps) {
+export default function Editorial({ vm, onDismissNotification, onBack, onAdmin, onOpenAnnouncements, onSwitchDesign }: DesignProps) {
   const {
     masterTitle, phase, clock, dateText, currentName, startHM, endHM,
     progressPct, elapsedText, remainingText, countdownText,
-    nextName, nextStartHM, urgency, timeSynced, notification,
+    nextName, nextStartHM, urgency, timeSynced, online, notification,
   } = vm;
 
   const hm = clock.slice(0, 5);
@@ -20,16 +21,22 @@ export default function Editorial({ vm, onDismissNotification, onBack, onAdmin, 
   const kicker = phase === 'before' ? `距 ${currentName ?? ''} 开考`
     : phase === 'ended' ? (currentName ? `${currentName} 已结束` : '今日已结束')
     : phase === 'empty' ? '暂未配置考试' : (currentName ?? '');
+  const sync = getSyncStatus(online, timeSynced);
 
   return (
     <div className={`ed ed--${phase}`}>
       <div className="ed__rail" aria-hidden="true" />
       <div className="ed__main">
         <header className="ed__head">
-          <button className="ed__ghost" onClick={onBack} aria-label="返回">←</button>
-          <span className="ed__gaokao">{kickerBrand}</span>
-          <button className="ed__ghost" onClick={onSwitchDesign} aria-label="切换设计" title="切换展示设计">▣</button>
-          <button className="ed__ghost" onClick={onAdmin} aria-label="管理">⚙</button>
+          <div className="ed__head-left">
+            <button className="ed__ghost" onClick={onBack} aria-label="返回">←</button>
+          </div>
+          <span className="ed__gaokao" title={kickerBrand}>{kickerBrand}</span>
+          <div className="ed__head-actions">
+            <button className="ed__ghost" onClick={onOpenAnnouncements} aria-label="查看公告" title="系统公告">📢</button>
+            <button className="ed__ghost" onClick={onSwitchDesign} aria-label="切换设计" title="切换展示设计">▣</button>
+            <button className="ed__ghost" onClick={onAdmin} aria-label="管理">⚙</button>
+          </div>
         </header>
 
         <p className="ed__masthead">{masterTitle || '考试看板'}</p>
@@ -61,7 +68,7 @@ export default function Editorial({ vm, onDismissNotification, onBack, onAdmin, 
         <div className="ed__side-row">
           <span className="ed__side-k">考试日</span>
           <span className="ed__side-v">{dateText.split('·').pop()?.trim() || '—'}</span>
-          <span className={`ed__side-sync ${timeSynced ? 'is-ok' : ''}`}>{timeSynced ? '已校时' : '本地时间'}</span>
+          <span className={`ed__side-sync is-${sync.tone}`}>{sync.text}</span>
         </div>
         {phase !== 'empty' && <>
           <div className="ed__side-row">
