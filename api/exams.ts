@@ -16,6 +16,20 @@ function database() {
 // （数据库在新加坡、Vercel 在美国，每条 SQL 都是一次跨洲 HTTP 往返，
 // 以前每次 GET/POST 都做 6 次 DDL 往返→累计 2-3 秒。现改为按需且仅一次。)
 let migratePromise: Promise<void> | null = null;
+let updatedAtMigrationPromise: Promise<void> | null = null;
+
+// 早期版本曾将 updated_at 建为 INTEGER；毫秒时间戳超过其上限时，将旧列无损扩展为 BIGINT。
+// 仅在旧表首次写入溢出、或按需建表迁移时执行，避免每次请求增加 DDL 往返。
+function ensureUpdatedAtBigIntOnce(): Promise<void> {
+  if (!updatedAtMigrationPromise) {
+    updatedAtMigrationPromise = (async () => {
+      const sql = database();
+      await sql`ALTER TABLE exam_data ALTER COLUMN updated_at TYPE BIGINT USING updated_at::BIGINT`;
+    })().catch(err => { updatedAtMigrationPromise = null; throw err; });
+  }
+  return updatedAtMigrationPromise;
+}
+
 function ensureTableOnce(): Promise<void> {
   if (!migratePromise) {
     migratePromise = (async () => {
@@ -32,6 +46,7 @@ function ensureTableOnce(): Promise<void> {
       await sql`ALTER TABLE exam_data ADD COLUMN IF NOT EXISTS majors JSONB NOT NULL DEFAULT '[]'`;
       await sql`ALTER TABLE exam_data ADD COLUMN IF NOT EXISTS active_major_id TEXT NOT NULL DEFAULT ''`;
       await sql`ALTER TABLE exam_data ADD COLUMN IF NOT EXISTS alerts JSONB`;
+      await ensureUpdatedAtBigIntOnce();
       await sql`
         INSERT INTO exam_data (id, items, title, updated_at)
         VALUES (1, '[]', '', 0)
@@ -56,6 +71,14 @@ type UpdatedRow = { updated_at: number | string };
 function missingRelation(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return /does not exist|undefined_table|undefined_column/i.test(msg);
+}
+
+function updatedAtIntegerOverflow(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const code = typeof err === 'object' && err !== null && 'code' in err
+    ? String((err as { code?: unknown }).code ?? '')
+    : '';
+  return code === '22003' && /out of range for type integer/i.test(msg);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -120,9 +143,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         updatedRows = await runUpdate();
       } catch (e) {
-        if (!missingRelation(e)) throw e;
-        await ensureTableOnce();
-        updatedRows = await runUpdate();
+        if (missingRelation(e)) {
+          await ensureTableOnce();
+          updatedRows = await runUpdate();
+        } else if (updatedAtIntegerOverflow(e)) {
+          // 旧实例数据库的 updated_at 仍为 INTEGER：自动升级后重试本次保存。
+          await ensureUpdatedAtBigIntOnce();
+          updatedRows = await runUpdate();
+        } else {
+          throw e;
+        }
       }
       if (!updatedRows?.length) {
         const rows = (await sql`SELECT items, title, majors, active_major_id, alerts, updated_at FROM exam_data WHERE id = 1`) as unknown as ExamRow[];

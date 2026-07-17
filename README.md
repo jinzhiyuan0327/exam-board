@@ -165,3 +165,10 @@ npm run dev
 - 修复 Vercel 使用 TypeScript 5.9 检查 API 时，`@neondatabase/serverless` 模板查询返回联合类型导致的 `TS7053` / `TS2339` 警告。
 - 在 `api/_auth.ts` 的认证配置读取，以及 `api/exams.ts` 的考试读取、版本冲突写入和冲突回读中，明确约束默认「行数组」查询模式的结果类型。
 - 不改变 SQL、鉴权、考试数据结构或运行时行为；仅收窄 SDK 的静态类型边界，避免部署日志出现 API 类型错误。
+
+## v1.16.4：旧数据库时间戳自动迁移
+
+- 修复早期部署的 `exam_data.updated_at` 列仍为 PostgreSQL `INTEGER` 时，写入毫秒级时间戳导致 `22003: out of range for type integer`、无法保存考试数据的问题。
+- 新增一次性自动迁移：首次检测到该溢出时，自动执行 `updated_at INTEGER → BIGINT` 无损扩容，并自动重试本次保存；无须手动进入 Neon 执行 SQL。
+- 按需建表/缺列修复路径也会确保 `updated_at` 为 `BIGINT`；正常实例不增加每次请求的 DDL 开销。
+- 已核查作者遥测台：其事件、实例、公告与图片的毫秒时间字段自早期版本起均使用 `BIGINT`，不受此问题影响。
