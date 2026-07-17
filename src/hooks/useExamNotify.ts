@@ -52,7 +52,9 @@ export function useExamNotify(exam: ExamItem | null) {
       if (!exam) return;
       const now = nowMs();
       for (const { phase, triggerAt } of getCheckpoints(exam)) {
-        const key = `${exam.id}_${phase}`;
+        // key 同时包含开考与结束时间：管理员修改任一时间后产生新 key，
+        // 旧 fired 记录不会拦截新的开考、结束类提醒。
+        const key = `${exam.id}_${phase}_${exam.startTime}_${exam.endTime}`;
         if (fired.current.has(key)) continue;
         if (now < triggerAt) continue;
         if (now - triggerAt > 60000) { fired.current.add(key); continue; }
@@ -68,8 +70,17 @@ export function useExamNotify(exam: ExamItem | null) {
     };
     check();
     const id = setInterval(check, 1000);
-    return () => { clearInterval(id); if (timer.current) clearTimeout(timer.current); };
-  }, [exam?.id]);
+    return () => {
+      clearInterval(id);
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+      // 考试数据改变时，不能继续展示按旧时间生成、且已失去自动关闭 timer 的通知。
+      setNotification(null);
+    };
+  // ID、名称或任一时间变化时都重跑：闭包始终使用最新考试数据生成提醒。
+  }, [exam?.id, exam?.name, exam?.startTime, exam?.endTime]);
 
   return { notification, dismiss: () => { setNotification(null); if (timer.current) clearTimeout(timer.current); } };
 }

@@ -156,7 +156,8 @@ export function useAlertOverlay(input: DriverInput): AlertOverlayItem | null {
           : c.anchor === 'afterStart' ? start + off
           : end - off;
         if (!Number.isFinite(trigger)) continue;
-        const key = `${exam.id}_${c.id}`;
+        // key 包含时间段：管理员改时间后，新时间 = 新 key，firedRef 不会拦截，自定义提醒可重新触发。
+        const key = `${exam.id}_${c.id}_${exam.startTime}_${exam.endTime}`;
         if (firedRef.current.has(key)) continue;
         if (now < trigger) continue;
         if (now - trigger > 60000) { firedRef.current.add(key); continue; }

@@ -40,8 +40,20 @@ export function useExamSync({ onUpdate, intervalMs = 30000 }: Options = {}) {
     // PWA/离线设备恢复网络、回到前台时立即补拉云端，API 始终网络优先。
     const onOnline = () => { void pull(); };
     const onVisible = () => { if (document.visibilityState === 'visible') void pull(); };
+    // 后台标签页的定时器可能被浏览器暂停；恢复焦点或 BFCache 页面时立即补拉最新数据。
+    const onFocus = () => { void pull(); };
+    const onPageShow = () => { void pull(); };
     window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisible);
-    return () => { cancelled = true; clearInterval(id); window.removeEventListener('online', onOnline); document.removeEventListener('visibilitychange', onVisible); };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('pageshow', onPageShow);
+    };
   }, [intervalMs]);
 }
