@@ -37,8 +37,9 @@ async function ensureAuthTable(): Promise<void> {
 async function config(): Promise<AuthRow | null> {
   try {
     await ensureAuthTable();
-    const rows = await sql()`SELECT password_hash, password_salt, token_secret, token_version FROM app_auth WHERE id = 1`;
-    return (rows[0] as AuthRow | undefined) ?? null;
+    // Neon 的模板查询声明可能是“行数组或完整结果对象”的联合类型；本查询始终使用默认行数组模式。
+    const rows = (await sql()`SELECT password_hash, password_salt, token_secret, token_version FROM app_auth WHERE id = 1`) as unknown as AuthRow[];
+    return rows[0] ?? null;
   } catch { return null; }
 }
 

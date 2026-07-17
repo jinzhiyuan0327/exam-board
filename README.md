@@ -41,18 +41,20 @@
 1. **登录 Vercel**（用 GitHub 账号登录，如首次使用需授权 Vercel 访问 GitHub）。
 2. **新建项目**：Dashboard 右上角 **Add New… → Project**。
 3. **导入作者仓库 `jinzhiyuan0327/exam-board`**：
-   - 直接在顶部导航栏粘贴仓库地址 `https://github.com/jinzhiyuan0327/exam-board` 导入
+   - 在 *Import Git Repository* 列表里找到 `jinzhiyuan0327/exam-board`，点 **Import**。
+   - 若列表里没有（仓库不在你名下），点 *Import Third-Party Git Repository* / **Adjust GitHub App Permissions**，或直接粘贴仓库地址 `https://github.com/jinzhiyuan0327/exam-board` 导入。
    - **请勿 Fork 到自己仓库**；Fork 后作者的更新不会自动同步到你的 Fork。
 4. **保持构建设置默认**：Framework 会自动识别为 **Vite**，Build Command / Output Directory 无需修改。
 5. **设置环境变量（展开 Environment Variables，仅两个）**：
    - `DATABASE_URL` — Neon Postgres 连接串（必填）
    - `ADMIN_PASSWORD` — 管理端登录密码（必填；留空则免登录）
+   - 其余变量（含 `TOKEN_SECRET`）均在部署时自动生成或使用内置默认，**无需填写**
 6. **点 Deploy**，等待构建完成后访问分配的域名即可使用。
 
 ### 后续更新（自动）
 作者向 `jinzhiyuan0327/exam-board` 的 `main` 分支 push 新代码后，所有导入了该仓库的 Vercel 项目会**自动重新部署**，客户端无需处理；约 1–3 分钟后刷新网页即为新版本。若你是 Fork 自行维护的客户端，则需自行合并更新，或在设置页「🚀 版本与更新」点「一键重新部署」（需先配置 `VERCEL_DEPLOY_HOOK_URL`）。
 
-> （自行维护代码时）：Fork 或上传本仓库到自己的 GitHub → 在 Vercel 导入自己的仓库 → 同样只需配 `DATABASE_URL` + `ADMIN_PASSWORD`。
+> 旧方式（自行维护代码时）：Fork 或上传本仓库到自己的 GitHub → 在 Vercel 导入自己的仓库 → 同样只需配 `DATABASE_URL` + `ADMIN_PASSWORD`。
 
 ## 本地开发
 
@@ -157,3 +159,9 @@ npm run dev
   - 修复了本地 `npm run dev` 因代理校时成功而永远显示“在线·已校时”、断网也不变的问题。
 - **Welcome 首页卡片文字对齐**：统一两张卡片 DOM 结构，新增 `.welcome-card__text` 纵向文字列，修复“考试大屏 / 全屏倒计时显示”挤在同一行的错位。
 - **设计三（校园黑板）顶栏居中**：顶栏改为 `grid-template-columns:1fr auto 1fr` 三分区布局，标题无论右侧按钮多宽都真正居中（修复桌面端标题偏左）。
+
+## v1.16.3：Neon 查询 TypeScript 类型兼容修复
+
+- 修复 Vercel 使用 TypeScript 5.9 检查 API 时，`@neondatabase/serverless` 模板查询返回联合类型导致的 `TS7053` / `TS2339` 警告。
+- 在 `api/_auth.ts` 的认证配置读取，以及 `api/exams.ts` 的考试读取、版本冲突写入和冲突回读中，明确约束默认「行数组」查询模式的结果类型。
+- 不改变 SQL、鉴权、考试数据结构或运行时行为；仅收窄 SDK 的静态类型边界，避免部署日志出现 API 类型错误。

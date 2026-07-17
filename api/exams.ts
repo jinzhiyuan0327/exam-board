@@ -42,6 +42,16 @@ function ensureTableOnce(): Promise<void> {
   return migratePromise;
 }
 
+type ExamRow = {
+  items?: unknown;
+  title?: string;
+  majors?: unknown;
+  active_major_id?: string;
+  alerts?: unknown;
+  updated_at?: number | string | null;
+};
+type UpdatedRow = { updated_at: number | string };
+
 // 判断是否因“表/列尚未创建”报错，仅在首次遇到时才跑迁移并重试。
 function missingRelation(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -60,8 +70,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
       // 快路径：直接查询（一次往返）；仅当表/列缺失时才迁移后重试。
-      const selectRow = () => sql`SELECT items, title, majors, active_major_id, alerts, updated_at FROM exam_data WHERE id = 1`;
-      let rows;
+      const selectRow = async (): Promise<ExamRow[]> => (
+        await sql`SELECT items, title, majors, active_major_id, alerts, updated_at FROM exam_data WHERE id = 1`
+      ) as unknown as ExamRow[];
+      let rows: ExamRow[];
       try {
         rows = await selectRow();
       } catch (e) {
@@ -91,18 +103,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!Array.isArray(items)) { res.status(400).json({ ok: false, error: 'items must be an array' }); return; }
       const expectedVersion = Number(baseUpdatedAt ?? 0);
       const updatedAt = Date.now();
-      const runUpdate = () => sql`
-        UPDATE exam_data
-        SET items = ${JSON.stringify(items)}::jsonb,
-            title = ${typeof title === 'string' ? title : ''},
-            majors = ${JSON.stringify(Array.isArray(majors) ? majors : [])}::jsonb,
-            active_major_id = ${typeof activeMajorId === 'string' ? activeMajorId : ''},
-            alerts = ${alerts && typeof alerts === 'object' ? JSON.stringify(alerts) : null}::jsonb,
-            updated_at = ${updatedAt}
-        WHERE id = 1 AND (${expectedVersion} <= 0 OR updated_at = ${expectedVersion})
-        RETURNING updated_at
-      `;
-      let updatedRows;
+      const runUpdate = async (): Promise<UpdatedRow[]> => (
+        await sql`
+          UPDATE exam_data
+          SET items = ${JSON.stringify(items)}::jsonb,
+              title = ${typeof title === 'string' ? title : ''},
+              majors = ${JSON.stringify(Array.isArray(majors) ? majors : [])}::jsonb,
+              active_major_id = ${typeof activeMajorId === 'string' ? activeMajorId : ''},
+              alerts = ${alerts && typeof alerts === 'object' ? JSON.stringify(alerts) : null}::jsonb,
+              updated_at = ${updatedAt}
+          WHERE id = 1 AND (${expectedVersion} <= 0 OR updated_at = ${expectedVersion})
+          RETURNING updated_at
+        `
+      ) as unknown as UpdatedRow[];
+      let updatedRows: UpdatedRow[];
       try {
         updatedRows = await runUpdate();
       } catch (e) {
@@ -111,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         updatedRows = await runUpdate();
       }
       if (!updatedRows?.length) {
-        const rows = await sql`SELECT items, title, majors, active_major_id, alerts, updated_at FROM exam_data WHERE id = 1`;
+        const rows = (await sql`SELECT items, title, majors, active_major_id, alerts, updated_at FROM exam_data WHERE id = 1`) as unknown as ExamRow[];
         const row = rows[0] ?? {};
         res.status(409).json({ ok: false, error: 'Conflict', remote: { items: row.items ?? [], title: row.title ?? '', majors: row.majors ?? [], activeMajorId: row.active_major_id ?? '', alerts: row.alerts ?? null, updatedAt: Number(row.updated_at ?? 0) } });
         return;
