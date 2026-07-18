@@ -6,6 +6,7 @@ import AdminPage from './pages/AdminPage';
 import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
 import ConsentGate from './components/ConsentGate';
+import PwaUpdateNotice from './components/PwaUpdateNotice';
 
 // 仅在考试大屏锁定页面滚动（大屏为 position:fixed 全屏，不应整页滚动）；
 // 其余页面（欢迎/登录/后台/设置）恢复文档自然滚动，修复移动端设置页无法下滑。
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <PwaUpdateNotice />
       </ConsentGate>
     </BrowserRouter>
   );

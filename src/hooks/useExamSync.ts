@@ -41,7 +41,7 @@ export function useExamSync({ onUpdate, intervalMs = 30000 }: Options = {}) {
     onUpdateRef.current?.({ items: s.exam.items, title: s.exam.title, alerts: s.alerts });
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force = false) => {
     // 手动/恢复时先应用本地快照；离线永远可立即显示最新本机编辑。
     applyLocal();
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
@@ -49,11 +49,12 @@ export function useExamSync({ onUpdate, intervalMs = 30000 }: Options = {}) {
     pulling.current = true;
     setSyncState('syncing');
     try {
-      const flushed = await flushPendingExamSync();
+      const flushed = await flushPendingExamSync(force);
       if (flushed.kind === 'saved') {
         applyPayload({ ...flushed.payload, updatedAt: flushed.updatedAt });
         setHasPendingSync(false);
       } else if (flushed.kind === 'offline') { setSyncState('offline'); return; }
+      else if (flushed.kind === 'deferred') { setHasPendingSync(true); setSyncState('pending'); return; }
       else if (flushed.kind === 'unauthorized') { setSyncState('auth-required'); return; }
       else if (flushed.kind === 'error') { setHasPendingSync(true); setSyncState('error'); return; }
 

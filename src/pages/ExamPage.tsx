@@ -17,6 +17,7 @@ import ExamAnnouncementOverlay from '../components/ExamAnnouncementOverlay';
 import { fetchAnnouncements } from '../services/announcements';
 import type { Announcement } from '../services/announcements';
 import type { ExamViewModel, ExamPhaseVM, Urgency } from '../designs/types';
+import { sortExamItemsByTime } from '../utils/examSchedule';
 import '../styles/exam.css';
 
 interface RawState {
@@ -40,9 +41,7 @@ function announcementVersion(list: Announcement[]): string {
 }
 
 function getActiveExams(items: ExamItem[]): ExamItem[] {
-  return items
-    .filter(x => x.enabled)
-    .sort((a, b) => a.order - b.order || a.startTime.localeCompare(b.startTime));
+  return sortExamItemsByTime(items.filter(x => x.enabled));
 }
 
 function computeRawState(items: ExamItem[], nowTs: number): RawState {
@@ -248,7 +247,7 @@ export default function ExamPage() {
         state={examDataSyncState}
         lastSyncAt={examDataLastSyncAt}
         hasPendingSync={hasPendingSync}
-        onRefresh={() => { void refreshExamData(); }}
+        onRefresh={() => { void refreshExamData(true); }}
       />
       <ExamAnnouncementOverlay
         open={announcementsOpen}

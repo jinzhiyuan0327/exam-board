@@ -6,6 +6,7 @@ import { getAppSettings, updateExamSettings, updateAlertsSettings, genMajorId, g
 import { fetchExamsFromServer, getCloudSnapshot, hasValidLocalToken, isLoginRequired, saveExamsToServer } from '../services/examService';
 import { threeWayMergeExam } from '../utils/examMerge';
 import { clearPendingExamSync, getPendingExamSync, queuePendingExamSync } from '../services/examOutbox';
+import { canReorderTogether, sortExamItemsByTime } from '../utils/examSchedule';
 import { fetchAnnouncements } from '../services/announcements';
 import type { Announcement } from '../services/announcements';
 import { renderMarkdown } from '../utils/renderMarkdown';
@@ -323,15 +324,15 @@ export default function AdminPage() {
     let next: ExamItem[];
     if (editing.id) next = items.map(x => x.id === editing.id ? { ...x, ...editing, id: x.id, order: x.order } : x);
     else next = [...items, { id: makeId(), order: items.length ? Math.max(...items.map(x => x.order)) + 1 : 0, name: editing.name.trim(), startTime: toISO(editing.startTime), endTime: toISO(editing.endTime), enabled: editing.enabled }];
-    next.sort((a, b) => a.order - b.order);
+    next = sortExamItemsByTime(next);
     commitItems(next); setEditing(null); setEditError(''); setLongDurationConfirmed(false);
   };
   const toggle = (id: string) => commitItems(items.map(x => x.id === id ? { ...x, enabled: !x.enabled } : x));
   const remove = (item: ExamItem) => { commitItems(items.filter(x => x.id !== item.id)); setDeleteTarget(null); };
   const move = (index: number, direction: -1 | 1) => {
-    const target = index + direction; if (target < 0 || target >= items.length) return;
+    const target = index + direction; if (target < 0 || target >= items.length || !canReorderTogether(items[index], items[target])) return;
     const next = [...items]; [next[index], next[target]] = [next[target], next[index]];
-    commitItems(next.map((x, order) => ({ ...x, order })));
+    commitItems(sortExamItemsByTime(next.map((x, order) => ({ ...x, order }))));
   };
 
   // ===== 统一提醒管理：保存时同步至云（与考试数据共用一个载荷） =====
@@ -364,10 +365,11 @@ export default function AdminPage() {
         const row = raw as Record<string, unknown>;
         if (!row.name || !row.startTime || !row.endTime) throw new Error(`第 ${index + 1} 项缺少 name、startTime 或 endTime`);
         return { id: String(row.id ?? makeId()), name: String(row.name), startTime: String(row.startTime), endTime: String(row.endTime), enabled: row.enabled !== false, order: typeof row.order === 'number' ? row.order : index };
-      }).sort((a: ExamItem, b: ExamItem) => a.order - b.order);
+      });
+      const chronological = sortExamItemsByTime(next);
       // 可选：导入文件重命名当前大型考试
       const nextName = typeof source.title === 'string' && source.title.trim() ? source.title.trim() : activeMajor.name;
-      const ms = majors.map(m => m.id === activeMajorId ? { ...m, name: nextName, items: next } : m);
+      const ms = majors.map(m => m.id === activeMajorId ? { ...m, name: nextName, items: chronological } : m);
       commit(ms, activeMajorId);
       setImportText(''); setImportOpen(false);
     } catch (error) { setImportError(error instanceof Error ? error.message : 'JSON 格式错误'); }
@@ -445,7 +447,7 @@ export default function AdminPage() {
         {items.length === 0 ? <div className="admin-empty"><div className="admin-empty__icon">📅</div><p>当前大型考试暂无分考试，点击左侧“添加分考试”开始</p></div> : <ul className="admin-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>{items.map((item, index) => {
           const status = STATUS[phase(item)];
           return <li className={`admin-item${!item.enabled ? ' admin-item--disabled' : ''}`} key={item.id}>
-            <div className="admin-item__order"><span className="admin-item__order-num">#{index + 1}</span><div className="admin-item__order-btns"><button className="admin-order-btn" onClick={() => move(index, -1)} disabled={index === 0}>▲</button><button className="admin-order-btn" onClick={() => move(index, 1)} disabled={index === items.length - 1}>▼</button></div></div>
+            <div className="admin-item__order"><span className="admin-item__order-num">#{index + 1}</span><div className="admin-item__order-btns"><button className="admin-order-btn" title={index > 0 && !canReorderTogether(items[index], items[index - 1]) ? '不同开考时间会自动按时间排序' : '同一开考时间内上移'} onClick={() => move(index, -1)} disabled={index === 0 || !canReorderTogether(items[index], items[index - 1])}>▲</button><button className="admin-order-btn" title={index < items.length - 1 && !canReorderTogether(items[index], items[index + 1]) ? '不同开考时间会自动按时间排序' : '同一开考时间内下移'} onClick={() => move(index, 1)} disabled={index === items.length - 1 || !canReorderTogether(items[index], items[index + 1])}>▼</button></div></div>
             <div className="admin-item__info"><div className="admin-item__name-row"><span className="admin-item__name">{item.name}</span><span className="admin-item__status" style={{ color: status.color, background: status.bg }}>{status.label}</span>{!item.enabled && <span className="admin-item__status" style={{ color: '#6c757d', background: 'rgba(108,117,125,.1)' }}>已禁用</span>}</div><div className="admin-item__times"><span>{fmtLocal(item.startTime)}</span><span className="admin-item__times-sep">–</span><span>{fmtLocal(item.endTime)}</span><span className="admin-item__duration">{duration(item.startTime, item.endTime)}</span></div></div>
             <div className="admin-item__actions"><button className={`admin-item-btn admin-item-btn--toggle${!item.enabled ? ' admin-item-btn--off' : ''}`} onClick={() => toggle(item.id)}>{item.enabled ? '已启用' : '已禁用'}</button><button className="admin-item-btn" onClick={() => { setLongDurationConfirmed(false); setEditing({ ...item }); }}>编辑</button><button className="admin-item-btn admin-item-btn--delete" onClick={() => setDeleteTarget(item)}>删除</button></div>
           </li>;

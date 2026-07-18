@@ -1,5 +1,6 @@
 import type { ExamItem, MajorExam, AlertState, AlertStateConfig, CustomReminder, AlertsSettings } from '../types';
 import { logger } from './logger';
+import { sortExamItemsByTime } from './examSchedule';
 
 export type { AlertState, AlertStateConfig, CustomReminder, AlertsSettings } from '../types';
 
@@ -167,7 +168,7 @@ export function normalizeExam(raw: unknown): ExamSettings {
     .map((m, i) => ({
       id: m.id || genMajorId(),
       name: m.name || `考试${i + 1}`,
-      items: Array.isArray(m.items) ? m.items : [],
+      items: sortExamItemsByTime(Array.isArray(m.items) ? m.items : []),
       order: typeof m.order === 'number' ? m.order : i,
     }))
     .sort((a, b) => a.order - b.order)

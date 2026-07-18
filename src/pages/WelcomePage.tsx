@@ -5,12 +5,14 @@ import { nowMs, parseZonedTime, formatDateTimeInZone } from '../utils/timeSource
 import { canInstallPwa, isStandalonePwa, promptInstallPwa } from '../services/pwa';
 import Watermark from '../components/Watermark';
 import type { ExamItem } from '../types';
+import { sortExamItemsByTime } from '../utils/examSchedule';
+import { APP_SETTINGS_CHANGED_EVENT, APP_SETTINGS_KEY } from '../utils/appSettings';
 import '../styles/welcome.css';
 
 const IDLE_MS = 10000;
 const PWA_DISMISS_KEY = 'exam_board_pwa_install_dismissed_at';
 function getNextExam(items: ExamItem[], now: number): { exam: ExamItem; phase: 'waiting' | 'ongoing' } | null {
-  const active = items.filter(x => x.enabled).sort((a, b) => a.order - b.order || a.startTime.localeCompare(b.startTime));
+  const active = sortExamItemsByTime(items.filter(x => x.enabled));
   for (const exam of active) { const start = parseZonedTime(exam.startTime); const end = parseZonedTime(exam.endTime); if (now < start) return { exam, phase: 'waiting' }; if (now <= end) return { exam, phase: 'ongoing' }; }
   return null;
 }
@@ -26,7 +28,7 @@ export default function WelcomePage() {
   const deadline = useRef(Date.now() + IDLE_MS);
   const resetIdle = () => { deadline.current = Date.now() + IDLE_MS; setIdleLeft(10); };
 
-  useEffect(() => { const update = () => { const t = nowMs(); setNow(t); setNextExam(getNextExam(getAppSettings().exam.items ?? [], t)); }; update(); const id = window.setInterval(update, 1000); return () => clearInterval(id); }, []);
+  useEffect(() => { const update = () => { const t = nowMs(); setNow(t); setNextExam(getNextExam(getAppSettings().exam.items ?? [], t)); }; const onStorage = (event: StorageEvent) => { if (event.key === APP_SETTINGS_KEY) update(); }; update(); const id = window.setInterval(update, 1000); window.addEventListener(APP_SETTINGS_CHANGED_EVENT, update); window.addEventListener('storage', onStorage); window.addEventListener('focus', update); window.addEventListener('pageshow', update); return () => { clearInterval(id); window.removeEventListener(APP_SETTINGS_CHANGED_EVENT, update); window.removeEventListener('storage', onStorage); window.removeEventListener('focus', update); window.removeEventListener('pageshow', update); }; }, []);
   useEffect(() => { const tick = () => { const left = Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000)); setIdleLeft(left); if (left <= 0) navigate('/exam'); }; const events: Array<keyof WindowEventMap> = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'wheel', 'click']; events.forEach(e => window.addEventListener(e, resetIdle, { passive: true })); tick(); const id = window.setInterval(tick, 250); return () => { clearInterval(id); events.forEach(e => window.removeEventListener(e, resetIdle)); }; }, [navigate]);
   useEffect(() => { const refresh = () => { const dismissed = Number(localStorage.getItem(PWA_DISMISS_KEY) ?? 0); setPwaAvailable(!nextExam && !isStandalonePwa() && canInstallPwa() && Date.now() - dismissed > 7 * 86400000); }; refresh(); window.addEventListener('pwa:available', refresh); return () => window.removeEventListener('pwa:available', refresh); }, [nextExam]);
   const install = async () => { resetIdle(); const installed = await promptInstallPwa(); if (installed) setPwaAvailable(false); };
