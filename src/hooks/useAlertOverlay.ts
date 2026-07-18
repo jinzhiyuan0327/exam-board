@@ -32,9 +32,17 @@ function hm(ms: number): string {
   return `${pad2(p.hour)}:${pad2(p.minute)}`;
 }
 
-function examLineOf(exam: ExamItem | null): string {
+function examLineOf(exam: ExamItem | null, referenceExam?: ExamItem | null): string {
   if (!exam) return '';
   const s = hm(parseZonedTime(exam.startTime));
+  if (referenceExam) {
+    const current = getZonedParts(parseZonedTime(referenceExam.endTime), DISPLAY_TIME_ZONE);
+    const next = getZonedParts(parseZonedTime(exam.startTime), DISPLAY_TIME_ZONE);
+    if (current.year !== next.year || current.month !== next.month || current.day !== next.day) {
+      return `${exam.name}  ·  ${next.month}月${next.day}日 ${s} 开考`;
+    }
+    return `${exam.name}  ·  ${s} 开考`;
+  }
   const e = hm(parseZonedTime(exam.endTime));
   return `${exam.name}  ·  ${s} — ${e}`;
 }
@@ -67,11 +75,16 @@ export function useAlertOverlay(input: DriverInput): AlertOverlayItem | null {
   const inputRef = useRef(input);
   inputRef.current = input;
 
-  const buildContext = useCallback((exam: ExamItem | null) => {
+  const buildContext = useCallback((exam: ExamItem | null, referenceExam?: ExamItem | null) => {
     const nx = inputRef.current.nextExam;
+    const start = exam ? hm(parseZonedTime(exam.startTime)) : '';
+    const reference = referenceExam ? getZonedParts(parseZonedTime(referenceExam.endTime), DISPLAY_TIME_ZONE) : null;
+    const target = exam ? getZonedParts(parseZonedTime(exam.startTime), DISPLAY_TIME_ZONE) : null;
+    const displayStart = reference && target && (reference.year !== target.year || reference.month !== target.month || reference.day !== target.day)
+      ? `${target.month}月${target.day}日 ${start}` : start;
     return {
       subject: exam?.name ?? '',
-      start: exam ? hm(parseZonedTime(exam.startTime)) : '',
+      start: displayStart,
       end: exam ? hm(parseZonedTime(exam.endTime)) : '',
       next: nx?.name ?? '',
       nextTime: nx ? hm(parseZonedTime(nx.startTime)) : '',
@@ -83,14 +96,14 @@ export function useAlertOverlay(input: DriverInput): AlertOverlayItem | null {
     if (!cfg || !cfg.enabled) return null;
     const isNext = state === 'next';
     const ctxExam = isNext ? inputRef.current.nextExam : exam;
-    const ctx = buildContext(exam);
+    const ctx = buildContext(ctxExam, isNext ? exam : null);
     const item: AlertOverlayItem = {
       key: `${exam?.id ?? 'na'}_${state}_${keySuffix}`,
       state, tone: state,
       label: cfg.label,
       title: fill(cfg.title, ctx),
       subtext: fill(cfg.subtext, ctx),
-      examLine: examLineOf(ctxExam),
+      examLine: examLineOf(ctxExam, isNext ? exam : null),
     };
     if (COUNTDOWN_STATES.includes(state) && exam) {
       item.countdownTo = state === 'end15' ? parseZonedTime(exam.endTime) : parseZonedTime(exam.startTime);

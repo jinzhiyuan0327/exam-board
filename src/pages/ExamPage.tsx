@@ -9,6 +9,7 @@ import { useExamNotify } from '../hooks/useExamNotify';
 import { useExamSync } from '../hooks/useExamSync';
 import { useAlertOverlay } from '../hooks/useAlertOverlay';
 import ExamAlertOverlay from '../components/ExamAlertOverlay';
+import ExamSyncAction from '../components/ExamSyncAction';
 import { getDesign } from '../designs/registry';
 import { getDesignId, setDesignId } from '../utils/designPref';
 import DesignSwitcher from '../components/DesignSwitcher';
@@ -119,7 +120,7 @@ export default function ExamPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 数据链接：保留 30s Neon 同步，所有设计共用同一份数据（含提醒管理配置）
-  useExamSync({
+  const { refresh: refreshExamData, syncState: examDataSyncState, lastSyncAt: examDataLastSyncAt, hasPendingSync } = useExamSync({
     onUpdate: ({ items: newItems, title: newTitle, alerts: newAlerts }) => {
       setItems(newItems); if (newTitle) setTitle(newTitle);
       if (newAlerts) setAlerts(newAlerts);
@@ -242,6 +243,12 @@ export default function ExamPage() {
         onAdmin={() => navigate('/admin')}
         onOpenAnnouncements={openAnnouncements}
         onSwitchDesign={() => setSwitcherOpen(true)}
+      />
+      <ExamSyncAction
+        state={examDataSyncState}
+        lastSyncAt={examDataLastSyncAt}
+        hasPendingSync={hasPendingSync}
+        onRefresh={() => { void refreshExamData(); }}
       />
       <ExamAnnouncementOverlay
         open={announcementsOpen}

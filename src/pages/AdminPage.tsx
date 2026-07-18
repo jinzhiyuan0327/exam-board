@@ -5,6 +5,7 @@ import type { ExamItem, MajorExam, AlertsSettings, AlertState, CustomReminder } 
 import { getAppSettings, updateExamSettings, updateAlertsSettings, genMajorId, genReminderId, DEFAULT_ALERTS, normalizeAlerts } from '../utils/appSettings';
 import { fetchExamsFromServer, getCloudSnapshot, hasValidLocalToken, isLoginRequired, saveExamsToServer } from '../services/examService';
 import { threeWayMergeExam } from '../utils/examMerge';
+import { clearPendingExamSync, getPendingExamSync, queuePendingExamSync } from '../services/examOutbox';
 import { fetchAnnouncements } from '../services/announcements';
 import type { Announcement } from '../services/announcements';
 import { renderMarkdown } from '../utils/renderMarkdown';
@@ -101,6 +102,8 @@ export default function AdminPage() {
   const [announceOpen, setAnnounceOpen] = useState(false);
   const [anns, setAnns] = useState<Announcement[]>([]);
   const [annLoading, setAnnLoading] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [longDurationConfirmed, setLongDurationConfirmed] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef(false); // 是否有尚未推送到服务器的本地变更
@@ -142,10 +145,12 @@ export default function AdminPage() {
       pendingRef.current = true; setSync('offline'); return;
     }
     setSync('saving');
-    const payload = buildPayload(ms, activeId);
+    // 以持久 outbox 为准，旧防抖请求也不会把较新的本机编辑覆盖成旧载荷。
+    const queued = getPendingExamSync();
+    const payload = queued?.payload ?? buildPayload(ms, activeId);
     // 必须在请求前读取共同基线；409 返回后云端已是较新版本，不能再拿它当 base。
     const baseSnapshot = getCloudSnapshot();
-    const result = await saveExamsToServer(payload);
+    const result = await saveExamsToServer({ ...payload, baseUpdatedAt: queued?.baseSnapshot?.updatedAt });
     if (result === 'unauthorized') {
       navigate('/login?next=/admin', { replace: true }); return;
     }
@@ -156,12 +161,14 @@ export default function AdminPage() {
         window.alert('云端返回的冲突数据不完整，本机修改已保留；请刷新后台后再保存。');
         return;
       }
-      const local = { ...payload, updatedAt: baseSnapshot?.updatedAt ?? 0 };
+      const local = { ...payload, updatedAt: queued?.baseSnapshot?.updatedAt ?? baseSnapshot?.updatedAt ?? 0 };
       const merged = threeWayMergeExam(baseSnapshot ?? result.remote, local, result.remote);
       const { alerts: mergedAlerts, ...mergedExam } = merged.payload;
       // 先把合并结果持久化到本机；同字段并发冲突时自动保留当前操作者的值。
       setMajors(merged.payload.majors);
       setActiveMajorId(merged.payload.activeMajorId);
+      const mergedQueuedAt = Date.now();
+      queuePendingExamSync({ payload: merged.payload, baseSnapshot: result.remote, savedAt: mergedQueuedAt });
       updateExamSettings({ ...mergedExam, updatedAt: result.remote.updatedAt });
       if (mergedAlerts) {
         updateAlertsSettings({ ...mergedAlerts, updatedAt: result.remote.updatedAt });
@@ -170,6 +177,7 @@ export default function AdminPage() {
       const retry = await saveExamsToServer({ ...merged.payload, baseUpdatedAt: result.remote.updatedAt });
       if (typeof retry === 'number') {
         pendingRef.current = false;
+        clearPendingExamSync(mergedQueuedAt);
         updateExamSettings({ ...mergedExam, updatedAt: retry });
         if (mergedAlerts) updateAlertsSettings({ ...mergedAlerts, updatedAt: retry });
         setSync('saved');
@@ -186,6 +194,7 @@ export default function AdminPage() {
       return;
     }
     pendingRef.current = false;
+    clearPendingExamSync(queued?.savedAt);
     const { alerts: pAlerts, ...examPayload } = payload;
     updateExamSettings({ ...examPayload, updatedAt: result });
     if (pAlerts) updateAlertsSettings({ ...pAlerts, updatedAt: result });
@@ -200,6 +209,12 @@ export default function AdminPage() {
     const { alerts: pAlerts, ...examPayload } = buildPayload(ms, activeId);
     updateExamSettings({ ...examPayload, updatedAt: now });
     if (pAlerts) updateAlertsSettings({ ...pAlerts, updatedAt: now });
+    // 本地持久 outbox：后台/PWA 被关闭后仍能在恢复联网时继续推送。
+    queuePendingExamSync({
+      payload: { ...examPayload, alerts: pAlerts ?? null },
+      baseSnapshot: getCloudSnapshot(),
+      savedAt: now,
+    });
     pendingRef.current = true;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     if (immediate) { void pushToServer(ms, activeId); return; }
@@ -302,11 +317,14 @@ export default function AdminPage() {
     if (!editing.name.trim()) { setEditError('请输入考试名称'); return; }
     if (!editing.startTime || !editing.endTime) { setEditError('请输入开始与结束时间'); return; }
     if (new Date(editing.startTime) >= new Date(editing.endTime)) { setEditError('结束时间必须晚于开始时间'); return; }
+    if (new Date(editing.endTime).getTime() - new Date(editing.startTime).getTime() > 6 * 60 * 60 * 1000 && !longDurationConfirmed) {
+      setEditError('本场时长超过 6 小时，请确认这是跨天或特殊安排。'); return;
+    }
     let next: ExamItem[];
     if (editing.id) next = items.map(x => x.id === editing.id ? { ...x, ...editing, id: x.id, order: x.order } : x);
     else next = [...items, { id: makeId(), order: items.length ? Math.max(...items.map(x => x.order)) + 1 : 0, name: editing.name.trim(), startTime: toISO(editing.startTime), endTime: toISO(editing.endTime), enabled: editing.enabled }];
     next.sort((a, b) => a.order - b.order);
-    commitItems(next); setEditing(null); setEditError('');
+    commitItems(next); setEditing(null); setEditError(''); setLongDurationConfirmed(false);
   };
   const toggle = (id: string) => commitItems(items.map(x => x.id === id ? { ...x, enabled: !x.enabled } : x));
   const remove = (item: ExamItem) => { commitItems(items.filter(x => x.id !== item.id)); setDeleteTarget(null); };
@@ -365,6 +383,8 @@ export default function AdminPage() {
   if (!ready) return <div className="admin-loading">正在验证管理权限…</div>;
 
   const syncMeta = SYNC_META[sync];
+  const editDurationMs = editing?.startTime && editing?.endTime ? new Date(editing.endTime).getTime() - new Date(editing.startTime).getTime() : 0;
+  const isLongEdit = Number.isFinite(editDurationMs) && editDurationMs > 6 * 60 * 60 * 1000;
 
   return <div className="admin-page">
     <Watermark />
@@ -376,8 +396,8 @@ export default function AdminPage() {
         </span>
         <button className="admin-btn admin-btn--primary" onClick={() => setAlertsOpen(true)}>🔔 提醒管理{alerts.enabled ? '' : '（已停用）'}</button>
         <button className="admin-btn" onClick={() => setAnnounceOpen(true)}>📢 公告</button>
-        <button className="admin-btn" onClick={() => setImportOpen(true)}>导入 JSON</button>
-        <button className="admin-btn" onClick={exportJson}>导出 JSON</button>
+        <div className="admin-header__desktop-data"><button className="admin-btn" onClick={() => setImportOpen(true)}>导入 JSON</button><button className="admin-btn" onClick={exportJson}>导出 JSON</button></div>
+        <div className="admin-more"><button className="admin-btn admin-more__trigger" onClick={() => setMoreOpen(v => !v)} aria-expanded={moreOpen}>⋯ 更多</button>{moreOpen && <div className="admin-more__menu"><button onClick={() => { setImportOpen(true); setMoreOpen(false); }}>导入 JSON</button><button onClick={() => { exportJson(); setMoreOpen(false); }}>导出 JSON</button></div>}</div>
         <button className="admin-btn" onClick={() => navigate('/settings')}>🛠️ 设置</button>
       </div>
     </header>
@@ -411,12 +431,13 @@ export default function AdminPage() {
           {editError && <div className="admin-error">{editError}</div>}
           <div className="admin-form">
             <label className="admin-label">科目名称<input className="admin-input" value={editing.name} onChange={e => setEditing(p => p && { ...p, name: e.target.value })} placeholder="如：语文" /></label>
-            <label className="admin-label">开始时间<input className="admin-input" type="datetime-local" value={fmtLocal(editing.startTime)} onChange={e => setEditing(p => p && { ...p, startTime: toISO(e.target.value) })} /></label>
-            <label className="admin-label">结束时间<input className="admin-input" type="datetime-local" value={fmtLocal(editing.endTime)} onChange={e => setEditing(p => p && { ...p, endTime: toISO(e.target.value) })} />{editing.startTime && editing.endTime && <span className="admin-duration-hint">历时 {duration(editing.startTime, editing.endTime)}</span>}</label>
+            <label className="admin-label">开始时间<input className="admin-input" type="datetime-local" value={fmtLocal(editing.startTime)} onChange={e => { setLongDurationConfirmed(false); setEditing(p => p && { ...p, startTime: toISO(e.target.value) }); }} /></label>
+            <label className="admin-label">结束时间<input className="admin-input" type="datetime-local" value={fmtLocal(editing.endTime)} onChange={e => { setLongDurationConfirmed(false); setEditing(p => p && { ...p, endTime: toISO(e.target.value) }); }} />{editing.startTime && editing.endTime && <span className="admin-duration-hint">历时 {duration(editing.startTime, editing.endTime)}</span>}</label>
+            {isLongEdit && <label className="admin-long-duration"><input type="checkbox" checked={longDurationConfirmed} onChange={e => setLongDurationConfirmed(e.target.checked)} />我确认这是超过 6 小时的跨天或特殊考试安排</label>}
             <label className="admin-toggle-label"><input type="checkbox" checked={editing.enabled} onChange={e => setEditing(p => p && { ...p, enabled: e.target.checked })} />启用此科目</label>
             <div className="admin-form-actions"><button className="admin-btn admin-btn--primary" onClick={commitEdit}>确认并保存</button><button className="admin-btn admin-btn--ghost" onClick={() => { setEditing(null); setEditError(''); }}>取消</button></div>
           </div>
-        </div> : <button className="admin-btn admin-btn--primary" style={{ width: '100%' }} onClick={() => setEditing({ name: '', startTime: '', endTime: '', enabled: true })}>+ 添加分考试</button>}
+        </div> : <button className="admin-btn admin-btn--primary" style={{ width: '100%' }} onClick={() => { setLongDurationConfirmed(false); setEditing({ name: '', startTime: '', endTime: '', enabled: true }); }}>+ 添加分考试</button>}
         <div className="admin-tips"><p className="admin-tips__title">💡 使用说明</p><ul><li>每次修改会自动保存并同步到云（Neon）</li><li>离线时仍可编辑，数据先存本地，联网后自动回推</li><li>不同大型考试各自拥有独立的分考试列表</li><li>大屏每 30 秒自动拉取最新数据</li></ul></div>
       </aside>
       <main className="admin-main">
@@ -426,7 +447,7 @@ export default function AdminPage() {
           return <li className={`admin-item${!item.enabled ? ' admin-item--disabled' : ''}`} key={item.id}>
             <div className="admin-item__order"><span className="admin-item__order-num">#{index + 1}</span><div className="admin-item__order-btns"><button className="admin-order-btn" onClick={() => move(index, -1)} disabled={index === 0}>▲</button><button className="admin-order-btn" onClick={() => move(index, 1)} disabled={index === items.length - 1}>▼</button></div></div>
             <div className="admin-item__info"><div className="admin-item__name-row"><span className="admin-item__name">{item.name}</span><span className="admin-item__status" style={{ color: status.color, background: status.bg }}>{status.label}</span>{!item.enabled && <span className="admin-item__status" style={{ color: '#6c757d', background: 'rgba(108,117,125,.1)' }}>已禁用</span>}</div><div className="admin-item__times"><span>{fmtLocal(item.startTime)}</span><span className="admin-item__times-sep">–</span><span>{fmtLocal(item.endTime)}</span><span className="admin-item__duration">{duration(item.startTime, item.endTime)}</span></div></div>
-            <div className="admin-item__actions"><button className={`admin-item-btn admin-item-btn--toggle${!item.enabled ? ' admin-item-btn--off' : ''}`} onClick={() => toggle(item.id)}>{item.enabled ? '已启用' : '已禁用'}</button><button className="admin-item-btn" onClick={() => setEditing({ ...item })}>编辑</button><button className="admin-item-btn admin-item-btn--delete" onClick={() => setDeleteTarget(item)}>删除</button></div>
+            <div className="admin-item__actions"><button className={`admin-item-btn admin-item-btn--toggle${!item.enabled ? ' admin-item-btn--off' : ''}`} onClick={() => toggle(item.id)}>{item.enabled ? '已启用' : '已禁用'}</button><button className="admin-item-btn" onClick={() => { setLongDurationConfirmed(false); setEditing({ ...item }); }}>编辑</button><button className="admin-item-btn admin-item-btn--delete" onClick={() => setDeleteTarget(item)}>删除</button></div>
           </li>;
         })}</ul>}
       </main>

@@ -99,6 +99,8 @@ export function normalizeAlerts(raw: unknown): AlertsSettings {
 }
 
 export const APP_SETTINGS_KEY = 'AppSettings';
+/** 同一页面内 localStorage 写入不会触发 storage 事件，使用此事件通知正在运行的页面。 */
+export const APP_SETTINGS_CHANGED_EVENT = 'exam-board:settings-changed';
 
 export function genMajorId(): string {
   return `major_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -227,6 +229,8 @@ export function updateAppSettings(partial: Partial<AppSettings> | ((c: AppSettin
       alerts: updates.alerts ? normalizeAlerts({ ...current.alerts, ...updates.alerts }) : current.alerts,
     };
     localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(next));
+    // storage 事件只会通知其他同源窗口；当前窗口也必须立即收到本地数据变更。
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event(APP_SETTINGS_CHANGED_EVENT));
   } catch (e) {
     logger.error('Failed to save AppSettings', e);
   }
