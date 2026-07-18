@@ -6,7 +6,8 @@ import { getAppSettings, updateExamSettings, updateAlertsSettings, genMajorId, g
 import { fetchExamsFromServer, getCloudSnapshot, hasValidLocalToken, isLoginRequired, saveExamsToServer } from '../services/examService';
 import { threeWayMergeExam } from '../utils/examMerge';
 import { clearPendingExamSync, getPendingExamSync, queuePendingExamSync } from '../services/examOutbox';
-import { canReorderTogether, sortExamItemsByTime } from '../utils/examSchedule';
+import { normalizeExamItems } from '../utils/examSchedule';
+import { recordSyncConflict } from '../services/offlineStore';
 import { fetchAnnouncements } from '../services/announcements';
 import type { Announcement } from '../services/announcements';
 import { renderMarkdown } from '../utils/renderMarkdown';
@@ -104,9 +105,11 @@ export default function AdminPage() {
   const [anns, setAnns] = useState<Announcement[]>([]);
   const [annLoading, setAnnLoading] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [moreMenuStyle, setMoreMenuStyle] = useState<React.CSSProperties>({});
   const [longDurationConfirmed, setLongDurationConfirmed] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moreTriggerRef = useRef<HTMLButtonElement | null>(null);
   const pendingRef = useRef(false); // 是否有尚未推送到服务器的本地变更
   const stateRef = useRef({ majors, activeMajorId });
   stateRef.current = { majors, activeMajorId };
@@ -164,6 +167,7 @@ export default function AdminPage() {
       }
       const local = { ...payload, updatedAt: queued?.baseSnapshot?.updatedAt ?? baseSnapshot?.updatedAt ?? 0 };
       const merged = threeWayMergeExam(baseSnapshot ?? result.remote, local, result.remote);
+      if (merged.conflictCount) void recordSyncConflict(merged.conflictCount, local, result.remote);
       const { alerts: mergedAlerts, ...mergedExam } = merged.payload;
       // 先把合并结果持久化到本机；同字段并发冲突时自动保留当前操作者的值。
       setMajors(merged.payload.majors);
@@ -182,6 +186,7 @@ export default function AdminPage() {
         updateExamSettings({ ...mergedExam, updatedAt: retry });
         if (mergedAlerts) updateAlertsSettings({ ...mergedAlerts, updatedAt: retry });
         setSync('saved');
+        if (merged.conflictCount) window.alert(`已合并本机与云端修改；其中 ${merged.conflictCount} 个同字段冲突已保留本机值，并已记录到本地冲突历史。`);
         return;
       }
       pendingRef.current = true;
@@ -324,16 +329,12 @@ export default function AdminPage() {
     let next: ExamItem[];
     if (editing.id) next = items.map(x => x.id === editing.id ? { ...x, ...editing, id: x.id, order: x.order } : x);
     else next = [...items, { id: makeId(), order: items.length ? Math.max(...items.map(x => x.order)) + 1 : 0, name: editing.name.trim(), startTime: toISO(editing.startTime), endTime: toISO(editing.endTime), enabled: editing.enabled }];
-    next = sortExamItemsByTime(next);
+    next = normalizeExamItems(next);
     commitItems(next); setEditing(null); setEditError(''); setLongDurationConfirmed(false);
   };
-  const toggle = (id: string) => commitItems(items.map(x => x.id === id ? { ...x, enabled: !x.enabled } : x));
+  /** 按明确的目标状态保存，按钮文案永远表达“下一步操作”，避免“已启用”被误认为点击后启用。 */
+  const setExamEnabled = (id: string, enabled: boolean) => commitItems(items.map(x => x.id === id ? { ...x, enabled } : x));
   const remove = (item: ExamItem) => { commitItems(items.filter(x => x.id !== item.id)); setDeleteTarget(null); };
-  const move = (index: number, direction: -1 | 1) => {
-    const target = index + direction; if (target < 0 || target >= items.length || !canReorderTogether(items[index], items[target])) return;
-    const next = [...items]; [next[index], next[target]] = [next[target], next[index]];
-    commitItems(sortExamItemsByTime(next.map((x, order) => ({ ...x, order }))));
-  };
 
   // ===== 统一提醒管理：保存时同步至云（与考试数据共用一个载荷） =====
   const commitAlerts = useCallback((next: AlertsSettings) => {
@@ -366,7 +367,7 @@ export default function AdminPage() {
         if (!row.name || !row.startTime || !row.endTime) throw new Error(`第 ${index + 1} 项缺少 name、startTime 或 endTime`);
         return { id: String(row.id ?? makeId()), name: String(row.name), startTime: String(row.startTime), endTime: String(row.endTime), enabled: row.enabled !== false, order: typeof row.order === 'number' ? row.order : index };
       });
-      const chronological = sortExamItemsByTime(next);
+      const chronological = normalizeExamItems(next);
       // 可选：导入文件重命名当前大型考试
       const nextName = typeof source.title === 'string' && source.title.trim() ? source.title.trim() : activeMajor.name;
       const ms = majors.map(m => m.id === activeMajorId ? { ...m, name: nextName, items: chronological } : m);
@@ -399,7 +400,7 @@ export default function AdminPage() {
         <button className="admin-btn admin-btn--primary" onClick={() => setAlertsOpen(true)}>🔔 提醒管理{alerts.enabled ? '' : '（已停用）'}</button>
         <button className="admin-btn" onClick={() => setAnnounceOpen(true)}>📢 公告</button>
         <div className="admin-header__desktop-data"><button className="admin-btn" onClick={() => setImportOpen(true)}>导入 JSON</button><button className="admin-btn" onClick={exportJson}>导出 JSON</button></div>
-        <div className="admin-more"><button className="admin-btn admin-more__trigger" onClick={() => setMoreOpen(v => !v)} aria-expanded={moreOpen}>⋯ 更多</button>{moreOpen && <div className="admin-more__menu"><button onClick={() => { setImportOpen(true); setMoreOpen(false); }}>导入 JSON</button><button onClick={() => { exportJson(); setMoreOpen(false); }}>导出 JSON</button></div>}</div>
+        <div className="admin-more"><button ref={moreTriggerRef} className="admin-btn admin-more__trigger" onClick={() => { if (moreOpen) { setMoreOpen(false); return; } const rect = moreTriggerRef.current?.getBoundingClientRect(); if (rect && window.matchMedia('(max-width: 600px)').matches) { const width = Math.min(260, window.innerWidth - 28); setMoreMenuStyle({ position: 'fixed', top: Math.min(rect.bottom + 8, window.innerHeight - 110), left: Math.min(Math.max(14, rect.left), window.innerWidth - width - 14), width }); } else setMoreMenuStyle({}); setMoreOpen(true); }} aria-expanded={moreOpen}>⋯ 更多</button>{moreOpen && <div className="admin-more__menu" style={moreMenuStyle}><button onClick={() => { setImportOpen(true); setMoreOpen(false); }}>导入 JSON</button><button onClick={() => { exportJson(); setMoreOpen(false); }}>导出 JSON</button></div>}</div>
         <button className="admin-btn" onClick={() => navigate('/settings')}>🛠️ 设置</button>
       </div>
     </header>
@@ -447,9 +448,9 @@ export default function AdminPage() {
         {items.length === 0 ? <div className="admin-empty"><div className="admin-empty__icon">📅</div><p>当前大型考试暂无分考试，点击左侧“添加分考试”开始</p></div> : <ul className="admin-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>{items.map((item, index) => {
           const status = STATUS[phase(item)];
           return <li className={`admin-item${!item.enabled ? ' admin-item--disabled' : ''}`} key={item.id}>
-            <div className="admin-item__order"><span className="admin-item__order-num">#{index + 1}</span><div className="admin-item__order-btns"><button className="admin-order-btn" title={index > 0 && !canReorderTogether(items[index], items[index - 1]) ? '不同开考时间会自动按时间排序' : '同一开考时间内上移'} onClick={() => move(index, -1)} disabled={index === 0 || !canReorderTogether(items[index], items[index - 1])}>▲</button><button className="admin-order-btn" title={index < items.length - 1 && !canReorderTogether(items[index], items[index + 1]) ? '不同开考时间会自动按时间排序' : '同一开考时间内下移'} onClick={() => move(index, 1)} disabled={index === items.length - 1 || !canReorderTogether(items[index], items[index + 1])}>▼</button></div></div>
+            <div className="admin-item__order"><span className="admin-item__order-num">#{index + 1}</span></div>
             <div className="admin-item__info"><div className="admin-item__name-row"><span className="admin-item__name">{item.name}</span><span className="admin-item__status" style={{ color: status.color, background: status.bg }}>{status.label}</span>{!item.enabled && <span className="admin-item__status" style={{ color: '#6c757d', background: 'rgba(108,117,125,.1)' }}>已禁用</span>}</div><div className="admin-item__times"><span>{fmtLocal(item.startTime)}</span><span className="admin-item__times-sep">–</span><span>{fmtLocal(item.endTime)}</span><span className="admin-item__duration">{duration(item.startTime, item.endTime)}</span></div></div>
-            <div className="admin-item__actions"><button className={`admin-item-btn admin-item-btn--toggle${!item.enabled ? ' admin-item-btn--off' : ''}`} onClick={() => toggle(item.id)}>{item.enabled ? '已启用' : '已禁用'}</button><button className="admin-item-btn" onClick={() => { setLongDurationConfirmed(false); setEditing({ ...item }); }}>编辑</button><button className="admin-item-btn admin-item-btn--delete" onClick={() => setDeleteTarget(item)}>删除</button></div>
+            <div className="admin-item__actions"><button type="button" className={`admin-item-btn admin-item-btn--toggle ${item.enabled ? 'admin-item-btn--disable' : 'admin-item-btn--enable'}`} title={item.enabled ? '停用后不会出现在首页、大屏或提醒中' : '启用后会参与首页、大屏和提醒计算'} aria-label={`${item.enabled ? '停用' : '启用'}${item.name}`} onClick={() => setExamEnabled(item.id, !item.enabled)}>{item.enabled ? '停用' : '启用'}</button><button className="admin-item-btn" onClick={() => { setLongDurationConfirmed(false); setEditing({ ...item }); }}>编辑</button><button className="admin-item-btn admin-item-btn--delete" onClick={() => setDeleteTarget(item)}>删除</button></div>
           </li>;
         })}</ul>}
       </main>

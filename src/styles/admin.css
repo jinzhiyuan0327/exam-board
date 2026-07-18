@@ -74,8 +74,10 @@
 .admin-item__actions { display:flex; gap:5px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
 .admin-item-btn { padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:inherit; font-size:0.75rem; cursor:pointer; white-space:nowrap; transition:background 0.15s; }
 .admin-item-btn:hover { background:rgba(255,255,255,0.12); }
-.admin-item-btn--toggle { color:#27ae60; border-color:rgba(39,174,96,0.3); }
-.admin-item-btn--toggle.admin-item-btn--off { color:#6c757d; }
+.admin-item-btn--toggle.admin-item-btn--enable { color:#27ae60; border-color:rgba(39,174,96,0.38); background:rgba(39,174,96,.07); }
+.admin-item-btn--toggle.admin-item-btn--enable:hover { background:rgba(39,174,96,.16); }
+.admin-item-btn--toggle.admin-item-btn--disable { color:#e6a23c; border-color:rgba(230,162,60,.4); background:rgba(230,162,60,.07); }
+.admin-item-btn--toggle.admin-item-btn--disable:hover { background:rgba(230,162,60,.16); }
 .admin-item-btn--edit.active { color:#3498db; border-color:rgba(52,152,219,0.4); background:rgba(52,152,219,0.08); }
 .admin-item-btn--delete { color:#e74c3c; border-color:rgba(231,76,60,0.25); }
 .admin-item-btn--delete:hover { background:rgba(231,76,60,0.12); }
@@ -87,7 +89,7 @@
 .admin-modal__actions { display:flex; gap:9px; margin-top:14px; }
 .admin-textarea { width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:inherit; font-size:0.8rem; font-family:monospace; resize:vertical; outline:none; box-sizing:border-box; }
 .admin-textarea:focus { border-color:#3498db; }
-@media(max-width:600px){.admin-header{padding:10px 14px}.admin-header__desktop-data{display:none}.admin-more{display:block}.admin-main{padding:14px}.admin-item{grid-template-columns:40px 1fr}.admin-item__actions{grid-column:1/-1;justify-content:flex-start}.admin-item__name{max-width:180px}}
+@media(max-width:600px){.admin-header{padding:10px 14px}.admin-header__desktop-data{display:none}.admin-more{display:block}.admin-more__menu{max-width:calc(100vw - 28px);min-width:0;z-index:10001}.admin-more__menu button{min-height:44px;padding:12px 14px;font-size:.9rem}.admin-main{padding:14px}.admin-item{grid-template-columns:40px 1fr}.admin-item__actions{grid-column:1/-1;justify-content:flex-start}.admin-item__name{max-width:180px}}
 
 .admin-loading{min-height:100vh;display:grid;place-items:center;background:#0d0d0d;color:rgba(255,255,255,.65);font:500 .95rem system-ui,sans-serif;}
 

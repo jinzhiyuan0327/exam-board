@@ -1,6 +1,7 @@
 import type { ExamItem, MajorExam, AlertState, AlertStateConfig, CustomReminder, AlertsSettings } from '../types';
 import { logger } from './logger';
-import { sortExamItemsByTime } from './examSchedule';
+import { normalizeExamItems } from './examSchedule';
+import { mirrorAppSettings } from '../services/offlineStore';
 
 export type { AlertState, AlertStateConfig, CustomReminder, AlertsSettings } from '../types';
 
@@ -168,7 +169,7 @@ export function normalizeExam(raw: unknown): ExamSettings {
     .map((m, i) => ({
       id: m.id || genMajorId(),
       name: m.name || `考试${i + 1}`,
-      items: sortExamItemsByTime(Array.isArray(m.items) ? m.items : []),
+      items: normalizeExamItems(Array.isArray(m.items) ? m.items : []),
       order: typeof m.order === 'number' ? m.order : i,
     }))
     .sort((a, b) => a.order - b.order)
@@ -193,7 +194,7 @@ export function getAppSettings(): AppSettings {
     const raw = localStorage.getItem(APP_SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
-    return {
+    const settings = {
       ...DEFAULT_SETTINGS,
       ...parsed,
       general: {
@@ -209,6 +210,9 @@ export function getAppSettings(): AppSettings {
         alerts: { ...DEFAULT_SETTINGS.study.alerts, ...(parsed.study?.alerts ?? {}) },
       },
     };
+    // 自动把旧 localStorage 数据迁移为 IndexedDB 持久镜像；失败不影响旧版读取。
+    void mirrorAppSettings(settings);
+    return settings;
   } catch (e) {
     logger.error('Failed to load AppSettings', e);
     return DEFAULT_SETTINGS;
@@ -230,6 +234,7 @@ export function updateAppSettings(partial: Partial<AppSettings> | ((c: AppSettin
       alerts: updates.alerts ? normalizeAlerts({ ...current.alerts, ...updates.alerts }) : current.alerts,
     };
     localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(next));
+    void mirrorAppSettings(next);
     // storage 事件只会通知其他同源窗口；当前窗口也必须立即收到本地数据变更。
     if (typeof window !== 'undefined') window.dispatchEvent(new Event(APP_SETTINGS_CHANGED_EVENT));
   } catch (e) {

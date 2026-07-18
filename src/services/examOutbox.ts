@@ -2,6 +2,7 @@ import type { AlertsSettings, ExamItem, MajorExam } from '../types';
 import type { ExamPayload } from './examService';
 import { saveExamsToServer } from './examService';
 import { threeWayMergeExam } from '../utils/examMerge';
+import { recordSyncConflict } from './offlineStore';
 
 const OUTBOX_KEY = 'exam_pending_sync';
 
@@ -68,6 +69,7 @@ export async function flushPendingExamSync(force = false): Promise<FlushResult> 
   if (first == null || !first.remote) { markPendingFailure(pending, '云端暂不可用'); return { kind: 'error' }; }
 
   const merged = threeWayMergeExam(pending.baseSnapshot ?? first.remote, { ...pending.payload, updatedAt: pending.baseSnapshot?.updatedAt ?? 0 }, first.remote);
+  if (merged.conflictCount) void recordSyncConflict(merged.conflictCount, pending.payload, first.remote);
   const mergedPending: PendingExamSync = {
     payload: merged.payload,
     baseSnapshot: first.remote,

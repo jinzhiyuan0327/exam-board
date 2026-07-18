@@ -1,16 +1,44 @@
-const CACHE = 'exam-board-shell-v1.17.1';
-const SHELL = ['/', '/index.html', '/favicon.svg', '/icon-512.png', '/manifest.webmanifest'];
-self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
-self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('exam-board-shell-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
+const CACHE = 'exam-board-shell-v1.17.3';
+const RUNTIME = 'exam-board-runtime-v1';
+const CORE = ['/', '/index.html', '/favicon.svg', '/icon-512.png', '/manifest.webmanifest'];
+
+async function precacheShell() {
+  const cache = await caches.open(CACHE);
+  const response = await fetch('/index.html', { cache: 'no-store' });
+  if (!response.ok) throw new Error('Unable to fetch application shell');
+  const html = await response.clone().text();
+  await cache.put('/index.html', response);
+  const assets = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)]
+    .map(match => new URL(match[1], self.location.origin))
+    .filter(url => url.origin === self.location.origin && !url.pathname.startsWith('/api/'))
+    .map(url => url.pathname + url.search);
+  await Promise.all([...new Set([...CORE, ...assets])].map(async url => {
+    try { const hit = await fetch(url, { cache: 'no-store' }); if (hit.ok) await cache.put(url, hit); } catch { /* previous verified shell remains available */ }
+  }));
+}
+
+self.addEventListener('install', event => event.waitUntil(precacheShell().then(() => self.skipWaiting())));
+self.addEventListener('activate', event => event.waitUntil((async () => {
+  const keys = await caches.keys();
+  const shells = keys.filter(key => key.startsWith('exam-board-shell-') && key !== CACHE).sort();
+  // Keep the most recent verified predecessor so an interrupted update can still open offline.
+  const remove = shells.slice(0, Math.max(0, shells.length - 1));
+  await Promise.all(remove.map(key => caches.delete(key)));
+  await self.clients.claim();
+})()));
 self.addEventListener('message', event => { if (event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });
 self.addEventListener('fetch', event => {
   const req = event.request; const url = new URL(req.url);
-  if (url.origin !== self.location.origin || req.method !== 'GET') return;
-  // 云端考试、登录、公告、校时接口永远走网络，绝不由 PWA 返回旧缓存。
-  if (url.pathname.startsWith('/api/')) return;
+  if (url.origin !== self.location.origin || req.method !== 'GET' || url.pathname.startsWith('/api/')) return;
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put('/index.html', copy)); return res; }).catch(() => caches.match('/index.html')));
+    event.respondWith(fetch(req).then(async response => {
+      if (response.ok) { const cache = await caches.open(CACHE); await cache.put('/index.html', response.clone()); }
+      return response;
+    }).catch(async () => (await caches.match('/index.html')) || (await caches.match('/', { ignoreSearch: true })) || Response.error()));
     return;
   }
-  event.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => { if (res.ok) caches.open(CACHE).then(c => c.put(req, res.clone())); return res; })));
+  event.respondWith(caches.match(req).then(hit => hit || fetch(req).then(async response => {
+    if (response.ok) { const cache = await caches.open(RUNTIME); await cache.put(req, response.clone()); }
+    return response;
+  })));
 });
