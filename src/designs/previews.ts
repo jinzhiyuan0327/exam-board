@@ -61,10 +61,15 @@ const editorial = svg(
   `<rect x='126' y='20' width='26' height='6' rx='2' fill='#3f6d5f'/><rect x='126' y='42' width='30' height='10' rx='2' fill='#a9c4b9'/><rect x='126' y='64' width='22' height='8' rx='2' fill='#3f6d5f'/>`
 );
 
+
+const lightThumb=(bg:string,accent:string,kind:string)=>svg(`<rect width='160' height='100' fill='${bg}'/>${kind==='orbit'?`<circle cx='80' cy='55' r='24' fill='none' stroke='${accent}' stroke-width='8'/><text x='80' y='59' fill='#183a52' font-size='12' text-anchor='middle'>58%</text>`:kind==='ice'?`<rect x='0' width='38' height='100' fill='#dff0ff'/><rect x='122' width='38' height='100' fill='#eaf5ff'/><text x='80' y='57' fill='#153a5b' font-size='25' font-family='Arial' font-weight='bold' text-anchor='middle'>08:30</text>`:kind==='peach'?`<rect x='0' width='28' height='100' fill='#ffcfbd'/><text x='42' y='55' fill='#313d50' font-size='27' font-family='Arial' font-weight='bold'>08:30</text><rect x='42' y='69' width='96' height='8' rx='4' fill='${accent}'/>`:`<text x='22' y='57' fill='#183a52' font-size='28' font-family='Arial' font-weight='bold'>08:30</text><rect x='22' y='70' width='88' height='8' rx='4' fill='${accent}'/><rect x='116' y='30' width='28' height='28' rx='6' fill='${accent}' opacity='.55'/>`}`);
+const sunriseSchedule=lightThumb('#f6fbff','#2b9bcb','standard'); const paletteDashboard=lightThumb('#fffaf3','#f29d38','standard'); const orbitFocus=lightThumb('#edfaf6','#52c5ad','orbit'); const peachTaskBoard=lightThumb('#fff5f0','#f79475','peach'); const posterGrid=lightThumb('#f8f5ec','#f9c744','standard'); const iceColumns=lightThumb('#f4f9ff','#388bca','ice');
+
 export const DESIGN_THUMBS: Record<string, string> = {
   'command-deck': commandDeck,
   'clean-focus': cleanFocus,
   'blackboard': blackboard,
   'emergency': emergency,
   'editorial': editorial,
+  'sunrise-schedule': sunriseSchedule, 'palette-dashboard': paletteDashboard, 'orbit-focus': orbitFocus, 'peach-task-board': peachTaskBoard, 'poster-grid': posterGrid, 'ice-columns': iceColumns,
 };

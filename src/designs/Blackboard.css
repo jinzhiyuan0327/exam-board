@@ -47,3 +47,8 @@
   .bb__ghost { width:32px; height:32px; flex:0 0 32px; font-size:14px; }
   .bb__sync { display:none; }
 }
+
+/* v1.17.5 campus display typography */
+.bb,.bb__clock,.bb__subject{font-family:var(--font-chalk)}.bb__clock,.bb__subject{font-weight:900;letter-spacing:.045em}
+/* v1.18.1 local role split */
+.bb__clock{font-family:var(--font-numeric)}.bb__subject{font-family:var(--font-chalk);font-weight:800}

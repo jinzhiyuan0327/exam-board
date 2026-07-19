@@ -1,6 +1,7 @@
-const CACHE = 'exam-board-shell-v1.17.3';
-const RUNTIME = 'exam-board-runtime-v1';
-const CORE = ['/', '/index.html', '/favicon.svg', '/icon-512.png', '/manifest.webmanifest'];
+const CACHE = 'exam-board-shell-v1.18.3';
+const RUNTIME = 'exam-board-runtime-v3';
+// Keep installation light. Fonts are cached after a design actually requests them.
+const CORE = ['/', '/index.html', '/favicon.svg', '/icon-512.png', '/manifest.webmanifest', '/fonts/exam-numeric-subset.ttf'];
 
 async function precacheShell() {
   const cache = await caches.open(CACHE);
@@ -20,10 +21,8 @@ async function precacheShell() {
 self.addEventListener('install', event => event.waitUntil(precacheShell().then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil((async () => {
   const keys = await caches.keys();
-  const shells = keys.filter(key => key.startsWith('exam-board-shell-') && key !== CACHE).sort();
-  // Keep the most recent verified predecessor so an interrupted update can still open offline.
-  const remove = shells.slice(0, Math.max(0, shells.length - 1));
-  await Promise.all(remove.map(key => caches.delete(key)));
+  const stale = keys.filter(key => (key.startsWith('exam-board-shell-') && key !== CACHE) || (key.startsWith('exam-board-runtime-') && key !== RUNTIME));
+  await Promise.all(stale.map(key => caches.delete(key)));
   await self.clients.claim();
 })()));
 self.addEventListener('message', event => { if (event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });

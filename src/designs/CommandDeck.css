@@ -141,3 +141,8 @@
   .cd__ghost { width:34px; height:34px; flex:0 0 34px; font-size:14px; }
   .cd__sync { padding:5px 8px; font-size:11px; white-space:nowrap; }
 }
+
+/* v1.17.5 design typography */
+.cd,.cd__clock,.cd__headline{font-family:var(--font-command)}.cd__clock{letter-spacing:.025em}
+/* v1.18.1 local role split */
+.cd__clock{font-family:var(--font-numeric)}.cd__headline{font-family:var(--font-command);font-weight:800}

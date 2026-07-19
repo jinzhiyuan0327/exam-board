@@ -35,3 +35,8 @@
 /* 手机“桌面版网站”等窄可用宽度下：顶部固定三栏，标题优先省略而不挤压右侧三枚操作按钮。 */
 @media (max-width:620px){ .ed__head{column-gap:6px} .ed__head-actions{gap:5px} .ed__ghost{width:32px;height:32px;flex-basis:32px;font-size:14px} .ed__gaokao{font-size:12px;letter-spacing:.16em} }
 @media (max-height:520px){ .ed__main{padding:clamp(12px,2vw,28px)} .ed__hm{font-size:min(16vw,42vh)} .ed__masthead{margin-top:6px} }
+
+/* v1.17.5 editorial display typography */
+.ed{font-family:var(--font-editorial)}.ed__kicker,.ed__masthead{font-family:"Exam Source Han",var(--font-fallback);font-weight:850}
+/* v1.18.1 local role split */
+.ed__hm,.ed__ss{font-family:var(--font-editorial)}.ed__period,.ed__side-foot{font-family:var(--font-editorial)}

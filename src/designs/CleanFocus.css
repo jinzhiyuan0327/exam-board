@@ -45,3 +45,8 @@
   .cf__ghost { width:34px; height:34px; flex:0 0 34px; font-size:14px; }
   .cf__sync { padding:5px 8px; font-size:11px; white-space:nowrap; }
 }
+
+/* v1.17.5 design typography */
+.cf,.cf__clock,.cf__headline{font-family:var(--font-clean)}.cf__headline{letter-spacing:.025em}
+/* v1.18.1 local role split */
+.cf__clock{font-family:var(--font-numeric)}.cf__headline{font-family:var(--font-clean);font-weight:800}

@@ -47,3 +47,8 @@
   .em__ghost { width:32px; height:32px; flex:0 0 32px; font-size:14px; }
   .em__sync { display:none; }
 }
+
+/* v1.17.5 emergency display typography */
+.em,.em__clock,.em__sys{font-family:var(--font-emergency)}.em__clock{letter-spacing:.015em}
+/* v1.18.1 local role split */
+.em__clock{font-family:var(--font-numeric)}.em__sys{font-family:var(--font-emergency);font-weight:900}

@@ -42,10 +42,14 @@ export interface DesignProps {
 
 export type DesignComponent = React.ComponentType<DesignProps>;
 
+export type DesignTheme = 'light' | 'dark';
+
 export interface DesignMeta {
   id: string;
   name: string;
   description: string;
+  /** 设计切换页的视觉分栏。 */
+  theme: DesignTheme;
   component: DesignComponent;
   /** 样例缩略图（data URI），用于切换窗预览。 */
   thumb: string;

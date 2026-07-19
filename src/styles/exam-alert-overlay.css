@@ -8,14 +8,15 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  font-family: var(--font-emergency);
   opacity: 0;
   transition: opacity 260ms ease;
 }
 .eao.is-visible { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .eao { transition: none; } }
 
-.eao-hero { margin: 0; font-weight: 800; letter-spacing: 2px; line-height: 1.02; font-variant-numeric: tabular-nums; }
+.eao-hero,.eao-title,.eao-examline,.eao-subbar span,.eao-emg-brand,.eao-emg-label,.eao-emg-sub,.eao-edit-kicker,.eao-edit-en,.eao-edit-sub { white-space:nowrap; word-break:keep-all; overflow-wrap:normal; max-width:100%; }
+.eao-hero { margin: 0; font-weight: 800; letter-spacing: 2px; line-height: 1.02; font-variant-numeric: tabular-nums; transform-origin:center; }
 .eao-hero--xl { font-size: clamp(96px, 22vw, 340px); }
 .eao-hero--lg { font-size: clamp(72px, 14vw, 200px); }
 .eao-hero--md { font-size: clamp(52px, 9vw, 128px); }
@@ -57,6 +58,7 @@
   repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, transparent 1px 46px),
   repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 1px, transparent 1px 46px);
   background-blend-mode: normal; color: #fff; }
+.eao--cmd { font-family:var(--font-command); letter-spacing:.025em; }
 .eao--cmd .eao-topbar { color: #cdd7ec; border-bottom: 1px solid rgba(255,255,255,.08); }
 .eao--cmd .eao-capsule { background: color-mix(in srgb, var(--accent) 22%, #111b31); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
 .eao--cmd .eao-divider { background: rgba(255,255,255,.16); }
@@ -67,6 +69,7 @@
 
 /* —— 02 清爽聚焦（浅色） —— */
 .eao--clean { background: #f7fafe; color: #132b3b; }
+.eao--clean { font-family:var(--font-clean); }
 .eao--clean .eao-topbar { color: #4a6a80; border-bottom: 1px solid #e3ecf5; }
 .eao--clean .eao-capsule { background: var(--soft); color: var(--accent); }
 .eao--clean .eao-center { background: #fff; border: 1px solid #d8e5f3; border-radius: 28px; padding: 56px 6vw; box-shadow: 0 24px 60px rgba(20,60,110,.10); }
@@ -77,6 +80,10 @@
 /* —— 03 校园黑板 —— */
 .eao--chalk { background:
   radial-gradient(1200px 700px at 50% 40%, #1a4a3f, #153e35 70%); color: #f8fbf5; }
+.eao--chalk { font-family:var(--font-chalk); }
+.eao--chalk .eao-center { display:grid; grid-template-rows:auto minmax(0,1fr) auto auto; justify-items:center; align-content:center; width:min(92vw,1500px); min-height:58vh; gap:clamp(12px,2vh,28px); padding:4vh 6vw; }
+.eao--chalk .eao-title { font-family:var(--font-chalk); font-weight:800; }
+.eao--chalk .eao-hero { font-family:var(--font-chalk); font-weight:900; font-size:clamp(48px,min(18vw,28vh),300px); }
 .eao--chalk .eao-topbar { color: #cfe4d7; border-bottom: 1px dashed #416c60; }
 .eao--chalk .eao-capsule { background: transparent; color: var(--accent); letter-spacing: 4px; }
 .eao--chalk .eao-hero { color: var(--accent); text-shadow: 0 1px 0 rgba(0,0,0,.25); }
@@ -87,6 +94,7 @@
 
 /* ————— 04 高对比应急（上下色条） ————— */
 .eao--emergency { background: #101214; color: #fff; justify-content: space-between; }
+.eao--emergency { font-family:var(--font-emergency); }
 .eao-emg-bar { width: 100%; min-height: 150px; background: var(--accent); color: #101214;
   display: flex; align-items: center; padding: 0 56px; }
 .eao-emg-bar--top { justify-content: space-between; }
@@ -101,6 +109,8 @@
 
 /* ————— 06 编辑排版（左对齐） ————— */
 .eao--editorial { background: #f2eee5; color: #23201a; flex-direction: row; align-items: stretch; justify-content: flex-start; }
+.eao--editorial { font-family:var(--font-editorial); }
+.eao--editorial .eao-hero,.eao--editorial .eao-title { font-family:"Exam Source Han",var(--font-fallback); font-weight:850; }
 .eao-edit-rail { width: 105px; flex: 0 0 105px; }
 .eao-edit-rail--left { background: var(--accent); }
 .eao-edit-rail--right { background: #183a37; display: flex; align-items: center; justify-content: center; }
@@ -121,3 +131,11 @@
   .eao-edit-rail { width: 56px; flex-basis: 56px; }
   .eao-edit-main { padding: 0 26px; }
 }
+@media (max-height: 640px) { .eao--centered .eao-center{gap:12px;transform:scale(.88)} .eao--centered .eao-subbar{padding:14px 22px} }
+/* v1.17.5 measured single-line fitting. The hook writes --fit-scale after real layout measurement. */
+.eao-fit-text{display:block;white-space:nowrap;word-break:keep-all;overflow:visible;transform:scaleX(var(--fit-scale,1));transform-origin:center;}
+.eao--editorial .eao-fit-text{transform-origin:left center}.eao-emg-bar .eao-fit-text{transform-origin:center}
+
+.eao--cmd .eao-hero,.eao--clean .eao-hero,.eao--chalk .eao-hero,.eao--emergency .eao-hero{font-family:var(--font-numeric)}
+.eao--chalk .eao-title{font-family:var(--font-chalk)}
+.eao--editorial .eao-edit-kicker,.eao--editorial .eao-edit-sub{font-family:var(--font-editorial)}

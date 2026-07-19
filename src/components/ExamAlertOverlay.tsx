@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { AlertState } from '../types';
 import type { AlertOverlayItem } from '../hooks/useAlertOverlay';
 import '../styles/exam-alert-overlay.css';
+import FitText from './FitText';
 
 interface Props {
   item: AlertOverlayItem | null;
@@ -105,12 +106,12 @@ export default function ExamAlertOverlay({ item, now, designId, masterTitle, tim
           <span className="eao-emg-label">{item.label}</span>
         </div>
         <div className="eao-emg-body">
-          <p className="eao-title">{item.title}</p>
-          <p className={`eao-hero ${heroSizeClass(hero)}`}>{hero}</p>
-          {item.examLine && <p className="eao-examline">{item.examLine}</p>}
+          <FitText className="eao-title">{item.title}</FitText>
+          <FitText className={`eao-hero ${heroSizeClass(hero)}`}>{hero}</FitText>
+          {item.examLine && <FitText className="eao-examline">{item.examLine}</FitText>}
         </div>
         <div className="eao-emg-bar eao-emg-bar--bottom">
-          <span className="eao-emg-sub">{item.subtext}</span>
+          <FitText as="span" className="eao-emg-sub">{item.subtext}</FitText>
         </div>
       </div>
     );
@@ -122,13 +123,13 @@ export default function ExamAlertOverlay({ item, now, designId, masterTitle, tim
       <div className={rootCls} style={styleVars} role="alert" aria-live="assertive">
         <div className="eao-edit-rail eao-edit-rail--left" aria-hidden="true" />
         <div className="eao-edit-main">
-          <p className="eao-edit-kicker">{brand} / {year}</p>
-          <p className="eao-edit-en">{EN_LABEL[item.tone]} / {item.label}</p>
-          <p className="eao-title">{item.title}</p>
-          <p className={`eao-hero ${heroSizeClass(hero)}`}>{hero}</p>
+          <FitText className="eao-edit-kicker">{brand} / {year}</FitText>
+          <FitText className="eao-edit-en">{EN_LABEL[item.tone]} / {item.label}</FitText>
+          <FitText className="eao-title">{item.title}</FitText>
+          <FitText className={`eao-hero ${heroSizeClass(hero)}`}>{hero}</FitText>
           <div className="eao-edit-line" aria-hidden="true" />
-          {item.examLine && <p className="eao-examline">{item.examLine}</p>}
-          {item.subtext && <p className="eao-edit-sub">{item.subtext}</p>}
+          {item.examLine && <FitText className="eao-examline">{item.examLine}</FitText>}
+          {item.subtext && <FitText className="eao-edit-sub">{item.subtext}</FitText>}
         </div>
         <div className="eao-edit-rail eao-edit-rail--right" aria-hidden="true">
           <span className="eao-edit-vtext">{EN_LABEL[item.tone]}</span>
@@ -148,10 +149,10 @@ export default function ExamAlertOverlay({ item, now, designId, masterTitle, tim
       </div>
       <div className="eao-center">
         <span className="eao-capsule">{showBrackets ? `【 ${item.label} 】` : item.label}</span>
-        <p className="eao-title">{item.title}</p>
-        <p className={`eao-hero ${heroSizeClass(hero)}`}>{hero}</p>
+        <FitText className="eao-title">{item.title}</FitText>
+        <FitText className={`eao-hero ${heroSizeClass(hero)}`}>{hero}</FitText>
         <div className="eao-divider" aria-hidden="true" />
-        {item.examLine && <p className="eao-examline">{item.examLine}</p>}
+        {item.examLine && <FitText className="eao-examline">{item.examLine}</FitText>}
       </div>
       {item.subtext && <div className="eao-subbar"><span>{item.subtext}</span></div>}
     </div>
