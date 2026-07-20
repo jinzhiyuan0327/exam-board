@@ -11,7 +11,7 @@ interface Options {
 
 export type ExamDataSyncState = 'local' | 'syncing' | 'synced' | 'pending' | 'offline' | 'error' | 'auth-required';
 
-export function useExamSync({ onUpdate, intervalMs = 30000 }: Options = {}) {
+export function useExamSync({ onUpdate, intervalMs = 60000 }: Options = {}) {
   const lastApplied = useRef(0);
   const pulling = useRef(false);
   const onUpdateRef = useRef(onUpdate);
@@ -80,7 +80,7 @@ export function useExamSync({ onUpdate, intervalMs = 30000 }: Options = {}) {
     let cancelled = false;
     const pull = () => { if (!cancelled) void refresh(); };
     pull();
-    const id = setInterval(pull, intervalMs);
+    const id = setInterval(() => { if (document.visibilityState === 'visible') pull(); }, intervalMs);
     // PWA/离线设备恢复网络、回到前台时立即补拉云端，API 始终网络优先。
     const onOnline = () => { void pull(); };
     const onVisible = () => { if (document.visibilityState === 'visible') void pull(); };

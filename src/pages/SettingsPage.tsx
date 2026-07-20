@@ -6,7 +6,9 @@ import {
   updateTimeSyncSettings,
   APP_SETTINGS_KEY,
 } from '../utils/appSettings';
-import type { TimeSyncSettings } from '../utils/appSettings';
+import { DEFAULT_TYPOGRAPHY, updateAlertsSettings } from '../utils/appSettings';
+import type { TimeSyncSettings, TypographyFontId, TypographySettings } from '../utils/appSettings';
+import { applyTypographySettings } from '../utils/typographySettings';
 import { isTimeSyncReady, formatDateTimeInZone } from '../utils/timeSource';
 import { getDesignId, setDesignId } from '../utils/designPref';
 import { DESIGNS } from '../designs/registry';
@@ -23,6 +25,21 @@ import '../styles/settings.css';
 
 const APP_VERSION = __APP_VERSION__;
 type ErrMode = 'off' | 'memory' | 'persist';
+const FONT_OPTIONS: Array<{ value: TypographyFontId; label: string }> = [
+  { value: 'alibaba', label: '阿里巴巴普惠体 3' },
+  { value: 'sourceHan', label: '思源黑体' },
+  { value: 'smiley', label: '得意黑 / Smiley Sans' },
+  { value: 'wenkai', label: '霞鹜文楷' },
+  { value: 'general', label: 'General Sans' },
+];
+const NUMERIC_FONT_OPTIONS: Array<{ value: TypographyFontId; label: string }> = [
+  { value: 'jbmono', label: 'JetBrains Mono（默认 · 等宽）' },
+  { value: 'general', label: 'General Sans' },
+  { value: 'alibaba', label: '阿里巴巴普惠体 3' },
+  { value: 'sourceHan', label: '思源黑体' },
+  { value: 'smiley', label: '得意黑 / Smiley Sans' },
+  { value: 'wenkai', label: '霞鹜文楷' },
+];
 
 function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -47,7 +64,9 @@ export default function SettingsPage() {
   }, [navigate]);
   const [ts, setTs] = useState<TimeSyncSettings>(() => getAppSettings().general.timeSync);
   const [errMode, setErrMode] = useState<ErrMode>(() => getAppSettings().study.alerts.errorCenterMode);
+  const [silentMode, setSilentMode] = useState<'all' | 'keyOnly' | 'pauseUntilExamEnd'>(() => getAppSettings().alerts.silentMode ?? 'all');
   const [designId, setDesign] = useState<string>(() => getDesignId());
+  const [typography, setTypography] = useState<TypographySettings>(() => getAppSettings().general.typography);
   const [syncing, setSyncing] = useState(false);
   const [readmeOpen, setReadmeOpen] = useState(false);
   const [teleOn, setTeleOn] = useState(() => isEnabled());
@@ -124,6 +143,18 @@ export default function SettingsPage() {
   };
 
   const patchDesign = (id: string) => { setDesignId(id); setDesign(id); };
+  const patchTypography = (role: keyof TypographySettings, font: TypographyFontId) => {
+    const next = { ...typography, [role]: font };
+    updateAppSettings(c => ({ general: { ...c.general, typography: next } }));
+    setTypography(next);
+    applyTypographySettings(next);
+  };
+
+  const resetTypography = () => {
+    const next = { ...DEFAULT_TYPOGRAPHY };
+    updateAppSettings(c => ({ general: { ...c.general, typography: next } }));
+    setTypography(next); applyTypographySettings(next);
+  };
 
   // 移动端：输入框聚焦时滚入可视区中央，避免软键盘顶起后被遮挡（桌面端不触发）。
   const focusScroll = (e: React.FocusEvent<HTMLElement>) => {
@@ -258,12 +289,33 @@ export default function SettingsPage() {
           <p className="set-note">也可在大屏右上角“切换风格”里实时预览切换；此处设置作为本机默认。</p>
         </section>
 
+        {/* ―― 字体分区 ―― */}
+        <section className="set-card">
+          <div className="set-card__head"><h2 className="set-card__title">🔤 字体分区</h2><button className="set-btn set-btn--ghost" onClick={resetTypography}>恢复设计默认</button></div>
+          <p className="set-card__lead">所有选择均为已随应用打包的本地字体。设置立即作用于当前大屏，并保存到本机；时钟默认使用 JetBrains Mono 等宽数字（子集已随应用打包）。</p>
+          <div className="set-font-grid">
+            <label className="set-font-field"><span>① 导航与标签</span><select className="set-input" value={typography.navigation} onChange={e => patchTypography('navigation', e.target.value as TypographyFontId)}>{FONT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select><small>页眉、状态、标签与说明</small><i className="set-font-preview set-font-preview--nav">导航 · 在线 · 已校时</i></label>
+            <label className="set-font-field"><span>② 展示标题</span><select className="set-input" value={typography.display} onChange={e => patchTypography('display', e.target.value as TypographyFontId)}><option value="design">按当前设计默认</option>{FONT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select><small>科目主标题与核心强调</small><i className="set-font-preview set-font-preview--display">语文考试</i></label>
+            <label className="set-font-field"><span>③ 动态内容</span><select className="set-input" value={typography.content} onChange={e => patchTypography('content', e.target.value as TypographyFontId)}>{FONT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select><small>下一科、卡片内容与动态中文</small><i className="set-font-preview set-font-preview--content">下一科：数学 · 14:30</i></label>
+            <label className="set-font-field"><span>④ 时钟与数字</span><select className="set-input" value={typography.numeric} onChange={e => patchTypography('numeric', e.target.value as TypographyFontId)}>{NUMERIC_FONT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select><small>时钟、倒计时、百分比和进度数字</small><i className="set-font-preview set-font-preview--numeric">09:30:00</i></label>
+          </div>
+          <p className="set-note">默认方案不再使用霞鹜文楷；如需自定义，可仅在本页手动选择它。</p>
+        </section>
+
         {/* ―― 提醒与高级 ―― */}
         <section className="set-card">
           <div className="set-card__head"><h2 className="set-card__title">🔔 提醒与高级</h2></div>
           <div className="set-row">
             <label className="set-label">全屏提醒管理</label>
             <button className="set-btn" onClick={() => navigate('/admin?alerts=1')}>前往提醒管理 →</button>
+          </div>
+          <div className="set-row">
+            <label className="set-label">静默模式</label>
+            <select className="set-input" value={silentMode} onChange={e => { const v = e.target.value as 'all' | 'keyOnly' | 'pauseUntilExamEnd'; setSilentMode(v); updateAlertsSettings({ silentMode: v }); }}>
+              <option value="all">全部提醒</option>
+              <option value="keyOnly">仅关键提醒（5分钟 / 开考 / 结束 / 下一科）</option>
+              <option value="pauseUntilExamEnd">本场进行中暂停提醒</option>
+            </select>
           </div>
           <div className="set-row">
             <label className="set-label">错误中心模式</label>

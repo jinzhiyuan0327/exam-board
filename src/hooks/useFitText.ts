@@ -6,7 +6,7 @@ export function useFitText(value: unknown, minScale = 0.36) {
   useLayoutEffect(() => {
     const node = ref.current; if (!node) return;
     const fit = () => { node.style.setProperty('--fit-scale', '1'); const available = node.parentElement?.clientWidth ?? node.clientWidth; const width = node.scrollWidth; const scale = width > 0 ? Math.max(minScale, Math.min(1, available / width)) : 1; node.style.setProperty('--fit-scale', String(scale)); };
-    fit(); const observer = new ResizeObserver(fit); observer.observe(node); if (node.parentElement) observer.observe(node.parentElement); window.addEventListener('resize', fit); return () => { observer.disconnect(); window.removeEventListener('resize', fit); };
+    fit(); if (typeof document !== 'undefined' && (document as any).fonts && (document as any).fonts.ready) { (document as any).fonts.ready.then(() => fit()).catch(() => {}); } const observer = new ResizeObserver(fit); observer.observe(node); if (node.parentElement) observer.observe(node.parentElement); window.addEventListener('resize', fit); return () => { observer.disconnect(); window.removeEventListener('resize', fit); };
   }, [value, minScale]);
   return ref;
 }

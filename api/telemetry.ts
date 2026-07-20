@@ -62,17 +62,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       clientTs: num(b.clientTs),
     };
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5_000);
+    const relayStartedAt = Date.now();
     const r = await fetch(COLLECT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Telemetry-Key': INGEST_KEY },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payload), signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (!r.ok) {
       const t = await r.text().catch(() => '');
       res.status(502).json({ ok: false, error: 'forward_failed', status: r.status, detail: t.slice(0, 200) });
       return;
     }
-    res.json({ ok: true });
+    res.json({ ok: true, relayMs: Date.now() - relayStartedAt });
   } catch (e) {
     res.status(500).json({ ok: false, error: (e as Error).message });
   }

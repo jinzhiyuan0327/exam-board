@@ -70,15 +70,24 @@ export function getTimeSyncSettings() { return getAppSettings().general.timeSync
 
 export async function syncTime(): Promise<TimeSyncRunResult> {
   const s = getTimeSyncSettings();
-  const url = (s.provider === 'httpDate' ? s.httpDateUrl : s.timeApiUrl).trim();
-  if (!url) throw new Error('No sync URL configured');
-  const samples: TimeSyncSampleResult[] = [];
-  for (let i = 0; i < 3; i++) samples.push(await measureOnce({ provider: s.provider, url, timeoutMs: 8000 }));
-  const sorted = [...samples].sort((a, b) => a.rttMs - b.rttMs).slice(0, 3);
-  const offsetMs = median(sorted.map(x => x.offsetMs));
-  return { offsetMs, rttMs: sorted[0].rttMs, serverEpochMs: sorted[0].serverEpochMs, measuredAt: sorted[0].measuredAt, samples };
+  const primaryUrl = (s.provider === 'httpDate' ? s.httpDateUrl : s.timeApiUrl).trim();
+  if (!primaryUrl) throw new Error('No sync URL configured');
+  // Parallel sampling avoids turning three trans-Pacific RTTs into a sequential wait.
+  // The median rejects a single delayed response without discarding a stable last-known offset.
+  const collect = async (provider: TimeSyncProvider, url: string, count: number) => {
+    const settled = await Promise.allSettled(Array.from({ length: count }, () => measureOnce({ provider, url, timeoutMs: 5_000 })));
+    return settled.filter((r): r is PromiseFulfilledResult<TimeSyncSampleResult> => r.status === 'fulfilled').map(r => r.value);
+  };
+  let samples = await collect(s.provider, primaryUrl, 3);
+  // Redundant same-origin fallback: when /api/time is unavailable, use Vercel's Date header.
+  if (samples.length === 0 && s.provider === 'timeApi') {
+    const fallbackUrl = s.httpDateUrl.trim() || '/';
+    samples = await collect('httpDate', fallbackUrl, 2);
+  }
+  if (samples.length === 0) throw new Error('All time sources unavailable; keeping last successful offset');
+  const fastest = [...samples].sort((a, b) => a.rttMs - b.rttMs).slice(0, Math.min(3, samples.length));
+  return { offsetMs: median(fastest.map(x => x.offsetMs)), rttMs: fastest[0].rttMs, serverEpochMs: fastest[0].serverEpochMs, measuredAt: fastest[0].measuredAt, samples };
 }
-
 let managerStop: (() => void) | null = null;
 
 export function startTimeSyncManager(): () => void {
@@ -107,7 +116,8 @@ export function startTimeSyncManager(): () => void {
       logger.info(`校时成功(${reason}): offset=${r.offsetMs}ms rtt=${r.rttMs}ms`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      updateTimeSyncSettings({ lastSyncAt: Date.now(), lastError: msg });
+      // Preserve lastSyncAt and offsetMs after a failed attempt: the monotonic local clock keeps running on the last good calibration.
+      updateTimeSyncSettings({ lastError: msg });
       window.dispatchEvent(new CustomEvent('timeSync:updated'));
       logger.warn(`校时失败(${reason}): ${msg}`);
     } finally { syncing = false; }
@@ -115,8 +125,12 @@ export function startTimeSyncManager(): () => void {
 
   const onSyncNow = () => void persist('manual');
   const onReschedule = () => schedule();
+  const onOnline = () => void persist('online');
+  const onVisible = () => { if (document.visibilityState === 'visible') void persist('visible'); };
   window.addEventListener('timeSync:syncNow', onSyncNow as EventListener);
   window.addEventListener('timeSync:reschedule', onReschedule as EventListener);
+  window.addEventListener('online', onOnline);
+  document.addEventListener('visibilitychange', onVisible);
   schedule();
   void persist('init');
 
@@ -126,6 +140,8 @@ export function startTimeSyncManager(): () => void {
     if (timer) { window.clearInterval(timer); timer = null; }
     window.removeEventListener('timeSync:syncNow', onSyncNow as EventListener);
     window.removeEventListener('timeSync:reschedule', onReschedule as EventListener);
+    window.removeEventListener('online', onOnline);
+    document.removeEventListener('visibilitychange', onVisible);
     managerStop = null;
   };
   return managerStop;

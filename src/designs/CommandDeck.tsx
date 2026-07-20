@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DesignProps } from './types';
 import { getSyncStatus } from '../utils/syncStatus';
+import FitText from '../components/FitText';
 import './CommandDeck.css';
 
 /**
@@ -76,7 +77,7 @@ export default function CommandDeck({ vm, onDismissNotification, onBack, onAdmin
           </div>
         )}
 
-        <div className="cd__clock">{clock}</div>
+        <FitText className="cd__clock">{clock}</FitText>
         <p className="cd__date">{dateText}</p>
 
         {phase !== 'empty' ? (

@@ -63,6 +63,8 @@ const editorial = svg(
 
 
 const lightThumb=(bg:string,accent:string,kind:string)=>svg(`<rect width='160' height='100' fill='${bg}'/>${kind==='orbit'?`<circle cx='80' cy='55' r='24' fill='none' stroke='${accent}' stroke-width='8'/><text x='80' y='59' fill='#183a52' font-size='12' text-anchor='middle'>58%</text>`:kind==='ice'?`<rect x='0' width='38' height='100' fill='#dff0ff'/><rect x='122' width='38' height='100' fill='#eaf5ff'/><text x='80' y='57' fill='#153a5b' font-size='25' font-family='Arial' font-weight='bold' text-anchor='middle'>08:30</text>`:kind==='peach'?`<rect x='0' width='28' height='100' fill='#ffcfbd'/><text x='42' y='55' fill='#313d50' font-size='27' font-family='Arial' font-weight='bold'>08:30</text><rect x='42' y='69' width='96' height='8' rx='4' fill='${accent}'/>`:`<text x='22' y='57' fill='#183a52' font-size='28' font-family='Arial' font-weight='bold'>08:30</text><rect x='22' y='70' width='88' height='8' rx='4' fill='${accent}'/><rect x='116' y='30' width='28' height='28' rx='6' fill='${accent}' opacity='.55'/>`}`);
+const neonQuartz=svg(`<rect width='160' height='100' fill='#0c0b1c'/><text x='80' y='57' fill='#fff' font-size='27' font-family='Arial' font-weight='bold' text-anchor='middle'>08:30</text><rect x='24' y='70' width='112' height='5' rx='3' fill='#35e5dc'/><circle cx='140' cy='12' r='22' fill='#221d55'/>`);
+const cinemaRedline=svg(`<rect width='160' height='100' fill='#101113'/><rect width='160' height='5' fill='#e84a42'/><rect y='95' width='160' height='5' fill='#e84a42'/><text x='18' y='57' fill='#f8f8f4' font-size='27' font-family='Arial' font-weight='bold'>08:30</text><rect x='18' y='67' width='110' height='5' rx='3' fill='#e84a42'/>`);
 const sunriseSchedule=lightThumb('#f6fbff','#2b9bcb','standard'); const paletteDashboard=lightThumb('#fffaf3','#f29d38','standard'); const orbitFocus=lightThumb('#edfaf6','#52c5ad','orbit'); const peachTaskBoard=lightThumb('#fff5f0','#f79475','peach'); const posterGrid=lightThumb('#f8f5ec','#f9c744','standard'); const iceColumns=lightThumb('#f4f9ff','#388bca','ice');
 
 export const DESIGN_THUMBS: Record<string, string> = {
@@ -71,5 +73,6 @@ export const DESIGN_THUMBS: Record<string, string> = {
   'blackboard': blackboard,
   'emergency': emergency,
   'editorial': editorial,
+  'neon-quartz': neonQuartz, 'cinema-redline': cinemaRedline,
   'sunrise-schedule': sunriseSchedule, 'palette-dashboard': paletteDashboard, 'orbit-focus': orbitFocus, 'peach-task-board': peachTaskBoard, 'poster-grid': posterGrid, 'ice-columns': iceColumns,
 };

@@ -40,3 +40,5 @@
 .ed{font-family:var(--font-editorial)}.ed__kicker,.ed__masthead{font-family:"Exam Source Han",var(--font-fallback);font-weight:850}
 /* v1.18.1 local role split */
 .ed__hm,.ed__ss{font-family:var(--font-editorial)}.ed__period,.ed__side-foot{font-family:var(--font-editorial)}
+/* v1.18.5 user-configurable regional typography; default no longer uses WenKai */
+.ed{--font-design-display:var(--font-emergency)}.ed__head,.ed__gaokao,.ed__side-k,.ed__side-sync{font-family:var(--font-region-navigation)}.ed__kicker,.ed__masthead{font-family:var(--font-region-display)}.ed__period,.ed__side-foot,.ed__notify,.ed__side-v{font-family:var(--font-region-content)}.ed__hm,.ed__ss{font-family:var(--font-region-numeric)}

@@ -12,7 +12,7 @@ interface Props {
   timeSynced: boolean;
 }
 
-type ThemeKey = 'cmd' | 'clean' | 'chalk' | 'emg' | 'edit';
+type ThemeKey = 'cmd' | 'clean' | 'chalk' | 'emg' | 'edit' | 'sunrise' | 'palette' | 'orbit' | 'peach' | 'poster' | 'ice' | 'quartz' | 'cinema';
 type Variant = 'centered' | 'emergency' | 'editorial';
 
 const DESIGN_TO_THEME: Record<string, { theme: ThemeKey; variant: Variant }> = {
@@ -21,6 +21,14 @@ const DESIGN_TO_THEME: Record<string, { theme: ThemeKey; variant: Variant }> = {
   'blackboard': { theme: 'chalk', variant: 'centered' },
   'emergency': { theme: 'emg', variant: 'emergency' },
   'editorial': { theme: 'edit', variant: 'editorial' },
+  'sunrise-schedule': { theme: 'sunrise', variant: 'centered' },
+  'palette-dashboard': { theme: 'palette', variant: 'centered' },
+  'orbit-focus': { theme: 'orbit', variant: 'centered' },
+  'peach-task-board': { theme: 'peach', variant: 'centered' },
+  'poster-grid': { theme: 'poster', variant: 'centered' },
+  'ice-columns': { theme: 'ice', variant: 'centered' },
+  'neon-quartz': { theme: 'quartz', variant: 'centered' },
+  'cinema-redline': { theme: 'cinema', variant: 'centered' },
 };
 
 // 各主题下的语义色（accent 主色 / soft 浅底）
@@ -50,6 +58,14 @@ const TONES: Record<ThemeKey, Record<AlertState, { accent: string; soft?: string
     '5min': { accent: '#d8422b' }, 'start': { accent: '#2f7d59' },
     'ended': { accent: '#565b58' }, 'next': { accent: '#6b57b8' },
   },
+  sunrise: { '15min':{accent:'#d58b25',soft:'#fff1ca'},'end15':{accent:'#d58b25',soft:'#fff1ca'},'5min':{accent:'#d95048',soft:'#fde8e5'},start:{accent:'#2b9bcb',soft:'#e2f5ff'},ended:{accent:'#66869d',soft:'#e7f0f5'},next:{accent:'#6670bd',soft:'#e9eaff'} },
+  palette: { '15min':{accent:'#d7832d',soft:'#fff0d7'},'end15':{accent:'#d7832d',soft:'#fff0d7'},'5min':{accent:'#d85148',soft:'#fbe7e4'},start:{accent:'#258f82',soft:'#dcf6ef'},ended:{accent:'#70849a',soft:'#eaf0f5'},next:{accent:'#6c64c0',soft:'#eeebff'} },
+  orbit: { '15min':{accent:'#ce8b29',soft:'#fff2d4'},'end15':{accent:'#ce8b29',soft:'#fff2d4'},'5min':{accent:'#cf5850',soft:'#fde9e6'},start:{accent:'#23806e',soft:'#dff4ec'},ended:{accent:'#587a80',soft:'#e7f2f0'},next:{accent:'#536fc5',soft:'#e8eeff'} },
+  peach: { '15min':{accent:'#d77d42',soft:'#fff0e7'},'end15':{accent:'#d77d42',soft:'#fff0e7'},'5min':{accent:'#d85650',soft:'#fde8e6'},start:{accent:'#478f82',soft:'#e0f3ed'},ended:{accent:'#717a8a',soft:'#eef0f4'},next:{accent:'#637cc9',soft:'#eceeff'} },
+  poster: { '15min':{accent:'#d39a22',soft:'#fff3c8'},'end15':{accent:'#d39a22',soft:'#fff3c8'},'5min':{accent:'#df5b46',soft:'#ffeae4'},start:{accent:'#278f85',soft:'#ddf3ef'},ended:{accent:'#5c7483',soft:'#eaf0f4'},next:{accent:'#5e67bd',soft:'#ececff'} },
+  ice: { '15min':{accent:'#d48335',soft:'#fff0db'},'end15':{accent:'#d48335',soft:'#fff0db'},'5min':{accent:'#db6254',soft:'#ffe9e5'},start:{accent:'#2585a8',soft:'#e1f5ff'},ended:{accent:'#668293',soft:'#eaf1f6'},next:{accent:'#5c71c2',soft:'#e9edff'} },
+  quartz: { '15min':{accent:'#f0be5b'},'end15':{accent:'#f0be5b'},'5min':{accent:'#ff6b9d'},start:{accent:'#35e5dc'},ended:{accent:'#9aa4bf'},next:{accent:'#9d87ff'} },
+  cinema: { '15min':{accent:'#f2a34d'},'end15':{accent:'#f2a34d'},'5min':{accent:'#f05b55'},start:{accent:'#6bd6a4'},ended:{accent:'#aab0b8'},next:{accent:'#a58cff'} },
 };
 
 const EN_LABEL: Record<AlertState, string> = {

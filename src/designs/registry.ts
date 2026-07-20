@@ -1,18 +1,8 @@
+import { lazy } from 'react';
 import type { DesignMeta } from './types';
-import CommandDeck from './CommandDeck'; import CleanFocus from './CleanFocus'; import Blackboard from './Blackboard'; import Emergency from './Emergency'; import Editorial from './Editorial';
-import { SunriseSchedule, PaletteDashboard, OrbitFocus, PeachTaskBoard, PosterGrid, IceColumns } from './LightDesigns';
 import { DESIGN_THUMBS } from './previews';
-export const DESIGNS: DesignMeta[] = [
- {id:'command-deck',name:'深色指挥舱',description:'深蓝黑、高信息密度，适合长时间运行的大屏。',theme:'dark',component:CommandDeck,thumb:DESIGN_THUMBS['command-deck']},
- {id:'blackboard',name:'校园黑板',description:'黑板绿 + 暖白、圆形进度环，传统庄重氛围。',theme:'dark',component:Blackboard,thumb:DESIGN_THUMBS['blackboard']},
- {id:'emergency',name:'高对比应急',description:'高亮 LED、顶部状态条，远距离极速辨识。',theme:'dark',component:Emergency,thumb:DESIGN_THUMBS['emergency']},
- {id:'clean-focus',name:'清爽聚焦',description:'白底考试蓝、低压力，适合明亮教室与投影。',theme:'light',component:CleanFocus,thumb:DESIGN_THUMBS['clean-focus']},
- {id:'editorial',name:'编辑排版',description:'三栏版式、朱红秒数，适合大厅与展板。',theme:'light',component:Editorial,thumb:DESIGN_THUMBS['editorial']},
- {id:'sunrise-schedule',name:'晨光日程',description:'浅天蓝与晨光黄，主时钟配右侧进度卡。',theme:'light',component:SunriseSchedule,thumb:DESIGN_THUMBS['sunrise-schedule']},
- {id:'palette-dashboard',name:'色卡仪表盘',description:'暖白大面板与四象限色卡，信息清晰有序。',theme:'light',component:PaletteDashboard,thumb:DESIGN_THUMBS['palette-dashboard']},
- {id:'orbit-focus',name:'圆环聚焦',description:'薄荷留白与中心进度环，突出专注与节奏。',theme:'light',component:OrbitFocus,thumb:DESIGN_THUMBS['orbit-focus']},
- {id:'peach-task-board',name:'蜜桃任务板',description:'当前场次与后续队列，适合一日多场考试。',theme:'light',component:PeachTaskBoard,thumb:DESIGN_THUMBS['peach-task-board']},
- {id:'poster-grid',name:'海报网格',description:'深蓝、明黄与暖白的强识别海报布局。',theme:'light',component:PosterGrid,thumb:DESIGN_THUMBS['poster-grid']},
- {id:'ice-columns',name:'冰蓝分栏',description:'日期、主时钟、倒计时三栏秩序，正式易扫读。',theme:'light',component:IceColumns,thumb:DESIGN_THUMBS['ice-columns']},
-];
+const CommandDeck=lazy(()=>import('./CommandDeck')); const CleanFocus=lazy(()=>import('./CleanFocus')); const Blackboard=lazy(()=>import('./Blackboard')); const Emergency=lazy(()=>import('./Emergency')); const Editorial=lazy(()=>import('./Editorial'));
+const SunriseSchedule=lazy(()=>import('./LightDesigns').then(m=>({default:m.SunriseSchedule}))); const PaletteDashboard=lazy(()=>import('./LightDesigns').then(m=>({default:m.PaletteDashboard}))); const OrbitFocus=lazy(()=>import('./LightDesigns').then(m=>({default:m.OrbitFocus}))); const PeachTaskBoard=lazy(()=>import('./LightDesigns').then(m=>({default:m.PeachTaskBoard}))); const PosterGrid=lazy(()=>import('./LightDesigns').then(m=>({default:m.PosterGrid}))); const IceColumns=lazy(()=>import('./LightDesigns').then(m=>({default:m.IceColumns}))); const NeonQuartz=lazy(()=>import('./DarkDesigns').then(m=>({default:m.NeonQuartz}))); const CinemaRedline=lazy(()=>import('./DarkDesigns').then(m=>({default:m.CinemaRedline})));
+const item=(id:string,name:string,description:string,theme:'light'|'dark',component:any):DesignMeta=>({id,name,description,theme,component,thumb:DESIGN_THUMBS[id]});
+export const DESIGNS:DesignMeta[]=[item('command-deck','深色指挥舱','深蓝黑、高信息密度，适合长时间运行的大屏。','dark',CommandDeck),item('blackboard','校园黑板','黑板绿 + 暖白、圆形进度环，传统庄重氛围。','dark',Blackboard),item('neon-quartz','霓虹石英','深紫石英与青绿色时间轴，冷静且高辨识。','dark',NeonQuartz),item('cinema-redline','影院红线','影院黑与上下红线，左对齐的高对比时钟。','dark',CinemaRedline),item('emergency','高对比应急','高亮 LED、顶部状态条，远距离极速辨识。','dark',Emergency),item('clean-focus','清爽聚焦','白底考试蓝、低压力，适合明亮教室与投影。','light',CleanFocus),item('editorial','编辑排版','三栏版式、朱红秒数，适合大厅与展板。','light',Editorial),item('sunrise-schedule','晨光日程','浅天蓝与晨光黄，主时钟配右侧进度卡。','light',SunriseSchedule),item('palette-dashboard','色卡仪表盘','暖白大面板与四象限色卡，信息清晰有序。','light',PaletteDashboard),item('orbit-focus','圆环聚焦','薄荷留白与中心进度环，突出专注与节奏。','light',OrbitFocus),item('peach-task-board','蜜桃任务板','当前场次与后续队列，适合一日多场考试。','light',PeachTaskBoard),item('poster-grid','海报网格','深蓝、明黄与暖白的强识别海报布局。','light',PosterGrid),item('ice-columns','冰蓝分栏','日期、主时钟、倒计时三栏秩序，正式易扫读。','light',IceColumns)];
 export const DEFAULT_DESIGN_ID=DESIGNS[0].id; export function getDesign(id:string|null|undefined):DesignMeta{return DESIGNS.find(d=>d.id===id)??DESIGNS[0];}

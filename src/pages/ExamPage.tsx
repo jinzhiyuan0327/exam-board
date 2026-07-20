@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ExamItem, AlertsSettings } from '../types';
 import { getAppSettings } from '../utils/appSettings';
@@ -10,6 +10,7 @@ import { useExamSync } from '../hooks/useExamSync';
 import { useAlertOverlay } from '../hooks/useAlertOverlay';
 import ExamAlertOverlay from '../components/ExamAlertOverlay';
 import ExamSyncAction from '../components/ExamSyncAction';
+import Watermark from '../components/Watermark';
 import { getDesign } from '../designs/registry';
 import { getDesignId, setDesignId } from '../utils/designPref';
 import DesignSwitcher from '../components/DesignSwitcher';
@@ -235,14 +236,15 @@ export default function ExamPage() {
 
   return (
     <div className="exam-root">
-      <Design
+      <Suspense fallback={<div className="exam-design-loading">正在载入展示设计…</div>}><Design
         vm={vm}
         onDismissNotification={dismiss}
         onBack={() => navigate('/')}
         onAdmin={() => navigate('/admin')}
         onOpenAnnouncements={openAnnouncements}
         onSwitchDesign={() => setSwitcherOpen(true)}
-      />
+      /></Suspense>
+      <Watermark exam />
       <ExamSyncAction
         state={examDataSyncState}
         lastSyncAt={examDataLastSyncAt}

@@ -146,3 +146,7 @@
 .cd,.cd__clock,.cd__headline{font-family:var(--font-command)}.cd__clock{letter-spacing:.025em}
 /* v1.18.1 local role split */
 .cd__clock{font-family:var(--font-numeric)}.cd__headline{font-family:var(--font-command);font-weight:800}
+/* v1.18.5 user-configurable regional typography */
+.cd{--font-design-display:var(--font-command)}.cd__top,.cd__master,.cd__date,.cd__period,.cd__track-meta,.cd__card-label,.cd__foot,.cd__notify{font-family:var(--font-region-navigation)}.cd__headline,.cd__card-value{font-family:var(--font-region-display)}.cd__empty-hint{font-family:var(--font-region-content)}.cd__clock{font-family:var(--font-region-numeric)}
+
+.cd__clock.eao-fit-text{margin:0}

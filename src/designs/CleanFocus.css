@@ -50,3 +50,7 @@
 .cf,.cf__clock,.cf__headline{font-family:var(--font-clean)}.cf__headline{letter-spacing:.025em}
 /* v1.18.1 local role split */
 .cf__clock{font-family:var(--font-numeric)}.cf__headline{font-family:var(--font-clean);font-weight:800}
+/* v1.18.5 user-configurable regional typography */
+.cf{--font-design-display:var(--font-clean)}.cf__top,.cf__master,.cf__date,.cf__period,.cf__meta-k,.cf__notify{font-family:var(--font-region-navigation)}.cf__headline{font-family:var(--font-region-display)}.cf__meta-v,.cf__next{font-family:var(--font-region-content)}.cf__clock{font-family:var(--font-region-numeric)}
+
+.cf__clock.eao-fit-text{margin:0}

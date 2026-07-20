@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DesignProps } from './types';
 import { getSyncStatus } from '../utils/syncStatus';
+import FitText from '../components/FitText';
 import './CleanFocus.css';
 
 const SEGMENTS = 20;
@@ -50,7 +51,7 @@ export default function CleanFocus({ vm, onDismissNotification, onBack, onAdmin,
         <main className="cf__center">
           {phase !== 'empty' && <p className="cf__headline">{headline}</p>}
           {phase === 'live' && startHM && endHM && <p className="cf__period">{startHM} — {endHM}</p>}
-          <div className="cf__clock">{clock}</div>
+          <FitText className="cf__clock">{clock}</FitText>
           <p className="cf__date">{dateText}</p>
 
           {phase !== 'empty' ? (

@@ -1,4 +1,4 @@
-.login-page{position:fixed;inset:0;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:24px;background:#090d18;color:#f6f8ff;font-family:var(--font-ui,system-ui,sans-serif);}
+.login-page{position:fixed;inset:0;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:24px;background:#090d18;color:#f6f8ff;font-family:var(--font-region-content);}
 .login-page__ambient{position:absolute;border-radius:50%;filter:blur(3px);pointer-events:none;}
 .login-page__ambient--one{width:560px;height:560px;top:-320px;left:calc(50% - 450px);background:radial-gradient(circle,rgba(64,127,255,.28),transparent 66%);}
 .login-page__ambient--two{width:500px;height:500px;right:calc(50% - 520px);bottom:-350px;background:radial-gradient(circle,rgba(159,89,255,.2),transparent 68%);}

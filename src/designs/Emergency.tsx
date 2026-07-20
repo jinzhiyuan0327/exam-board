@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DesignProps } from './types';
 import { getSyncStatus } from '../utils/syncStatus';
+import FitText from '../components/FitText';
 import './Emergency.css';
 
 /** 方案 04 · 高对比应急 — 高亮 LED、远距离极速辨识，顶部状态条。 */
@@ -56,7 +57,7 @@ export default function Emergency({ vm, onDismissNotification, onBack, onAdmin, 
           </div>
         )}
 
-        <div className="em__clock">{clock}</div>
+        <FitText className="em__clock">{clock}</FitText>
         <p className="em__date">{dateText}</p>
 
         {phase !== 'empty' ? (

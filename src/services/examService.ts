@@ -15,6 +15,7 @@ const TOKEN_KEY = 'admin_auth_token';
 const TOKEN_EXPIRES_KEY = 'admin_auth_token_expires';
 const CLOUD_VERSION_KEY = 'exam_cloud_updated_at';
 const CLOUD_SNAPSHOT_KEY = 'exam_cloud_snapshot';
+const CLOUD_ETAG_KEY = 'exam_cloud_etag';
 
 function toPayload(data: any): ExamPayload {
   return {
@@ -44,8 +45,14 @@ export function getCloudSnapshot(): ExamPayload | null {
 
 export async function fetchExamsFromServer(): Promise<ExamPayload | null> {
   try {
-    const res = await fetch(API_URL, { method: 'GET', headers: { 'Cache-Control': 'no-store' } });
+    const headers: Record<string, string> = {};
+    const etag = localStorage.getItem(CLOUD_ETAG_KEY);
+    if (etag) headers['If-None-Match'] = etag;
+    // no-cache validates at the edge but does not force a database round-trip when the ETag is unchanged.
+    const res = await fetch(API_URL, { method: 'GET', headers, cache: 'no-cache' });
+    if (res.status === 304) return getCloudSnapshot();
     if (!res.ok) return null;
+    const freshEtag = res.headers.get('ETag'); if (freshEtag) localStorage.setItem(CLOUD_ETAG_KEY, freshEtag);
     const data = await res.json();
     if (!data?.ok) return null;
     const payload = toPayload(data);

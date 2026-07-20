@@ -63,5 +63,7 @@ export interface AlertsSettings {
   states: Record<AlertState, AlertStateConfig>;
   /** 用户自定义提醒。 */
   custom: CustomReminder[];
+  /** 静默模式：all=全部；keyOnly=仅关键（5分钟/开考/结束/下一科）；pauseUntilExamEnd=本场进行中暂停提醒。 */
+  silentMode?: 'all' | 'keyOnly' | 'pauseUntilExamEnd';
   updatedAt?: number;
 }

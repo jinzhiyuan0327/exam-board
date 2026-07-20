@@ -94,6 +94,12 @@ export function useAlertOverlay(input: DriverInput): AlertOverlayItem | null {
   const makeBuiltIn = useCallback((state: AlertState, exam: ExamItem | null, keySuffix: string): AlertOverlayItem | null => {
     const cfg: AlertStateConfig | undefined = inputRef.current.settings.states[state];
     if (!cfg || !cfg.enabled) return null;
+    const mode = inputRef.current.settings.silentMode ?? 'all';
+    if (mode === 'keyOnly' && !['5min', 'start', 'ended', 'next'].includes(state)) return null;
+    if (mode === 'pauseUntilExamEnd') {
+      const ce = inputRef.current.currentExam;
+      if (ce) { const nv = nowMs(); const st = parseZonedTime(ce.startTime); const en = parseZonedTime(ce.endTime); if (nv >= st && nv < en) return null; }
+    }
     const isNext = state === 'next';
     const ctxExam = isNext ? inputRef.current.nextExam : exam;
     const ctx = buildContext(ctxExam, isNext ? exam : null);
@@ -159,6 +165,10 @@ export function useAlertOverlay(input: DriverInput): AlertOverlayItem | null {
     const scan = () => {
       const exam = inputRef.current.currentExam;
       if (!exam) return;
+      if ((inputRef.current.settings.silentMode ?? 'all') === 'pauseUntilExamEnd') {
+        const nv = nowMs(); const st0 = parseZonedTime(exam.startTime); const en0 = parseZonedTime(exam.endTime);
+        if (nv >= st0 && nv < en0) return;
+      }
       const start = parseZonedTime(exam.startTime);
       const end = parseZonedTime(exam.endTime);
       const now = nowMs();

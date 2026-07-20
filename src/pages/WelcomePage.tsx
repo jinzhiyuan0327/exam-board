@@ -19,8 +19,15 @@ function getNextExam(items: ExamItem[], now: number): { exam: ExamItem; phase: '
 const pad2 = (n: number) => String(n).padStart(2, '0');
 function fmtRemain(ms: number): string { const total = Math.max(0, Math.floor(ms / 1000)); const d = Math.floor(total / 86400); const h = Math.floor((total % 86400) / 3600); const m = Math.floor((total % 3600) / 60); const s = total % 60; return d > 0 ? `${d} 天 ${pad2(h)}:${pad2(m)}:${pad2(s)}` : `${pad2(h)}:${pad2(m)}:${pad2(s)}`; }
 
+const LAST_OPENED_KEY = 'exam_board_last_opened_at';
 export default function WelcomePage() {
   const navigate = useNavigate();
+  const lastOpenedRef = useRef<number>(0);
+  useEffect(() => {
+    const prev = Number(localStorage.getItem(LAST_OPENED_KEY) || 0);
+    lastOpenedRef.current = prev;
+    try { localStorage.setItem(LAST_OPENED_KEY, String(Date.now())); } catch { /* ignore */ }
+  }, []);
   const [now, setNow] = useState(() => nowMs());
   const [nextExam, setNextExam] = useState<ReturnType<typeof getNextExam>>(() => getNextExam(getAppSettings().exam.items ?? [], nowMs()));
   const [idleLeft, setIdleLeft] = useState(10);
@@ -34,9 +41,10 @@ export default function WelcomePage() {
   const install = async () => { resetIdle(); const installed = await promptInstallPwa(); if (installed) setPwaAvailable(false); };
   const dismissPwa = () => { localStorage.setItem(PWA_DISMISS_KEY, String(Date.now())); setPwaAvailable(false); resetIdle(); };
   const ongoing = nextExam?.phase === 'ongoing'; const startMs = nextExam ? parseZonedTime(nextExam.exam.startTime) : NaN; const endMs = nextExam ? parseZonedTime(nextExam.exam.endTime) : NaN; const countdownMs = nextExam ? (ongoing ? endMs - now : startMs - now) : 0;
-  return <div className="welcome-page"><div className="welcome-header"><p className="welcome-kicker">EXAM BOARD · LOCAL FIRST</p><h1 className="welcome-title">考试看板</h1><p className="welcome-subtitle">{getAppSettings().exam.title} · {new Date(now).toLocaleTimeString('zh-CN', { hour12: false })}</p></div>
-    {nextExam && <div className={`welcome-exam-banner${ongoing ? ' is-ongoing' : ''}`}><div className="welcome-exam-banner__eyebrow">{ongoing ? '正在考试' : '下一场考试'}</div><span className="welcome-exam-banner__icon">{ongoing ? '●' : '→'}</span><div className="welcome-exam-banner__info"><strong>{nextExam.exam.name}</strong><span>{ongoing ? '开始 ' : '开考 '}{formatDateTimeInZone(startMs)}</span></div><div className="welcome-exam-banner__count"><small>{ongoing ? '距结束' : '距开考'}</small>{fmtRemain(countdownMs)}</div></div>}
-    <div className={`welcome-grid${nextExam ? ' welcome-grid--has-exam' : ''}`}><button className={`welcome-card${nextExam ? ' welcome-card--featured' : ''}`} onClick={() => navigate('/exam')}><span className="welcome-card__icon">📊</span><span className="welcome-card__text"><span className="welcome-card__label">考试大屏</span><span className="welcome-card__desc">全屏倒计时显示</span></span></button><button className="welcome-card" onClick={() => navigate('/admin')}><span className="welcome-card__icon">⚙️</span><span className="welcome-card__text"><span className="welcome-card__label">管理后台</span><span className="welcome-card__desc">配置考试安排</span></span></button></div>
+  return <div className="welcome-page"><div className="welcome-header"><p className="welcome-kicker">EXAM BOARD · LOCAL FIRST</p><h1 className="welcome-title">考试看板</h1><p className="welcome-subtitle">{getAppSettings().exam.title} · {new Date(now).toLocaleTimeString('zh-CN', { hour12: false })}</p>{lastOpenedRef.current > 0 && <p className="welcome-lastopen">上次打开 {formatDateTimeInZone(lastOpenedRef.current)}</p>}</div>
+    {!nextExam && <div className="welcome-exam-banner is-ended"><div className="welcome-exam-banner__eyebrow">当前状态</div><span className="welcome-exam-banner__icon">✓</span><div className="welcome-exam-banner__info"><strong>暂无进行中的考试</strong><span>可进入管理后台安排下一场考试</span></div><div className="welcome-exam-banner__count"><small>看板状态</small>待安排</div></div>}
+    {nextExam && <div className={`welcome-exam-banner ${ongoing ? 'is-ongoing' : 'is-waiting'}`}><div className="welcome-exam-banner__eyebrow">{ongoing ? '正在考试' : '下一场考试'}</div><span className="welcome-exam-banner__icon">{ongoing ? '●' : '→'}</span><div className="welcome-exam-banner__info"><strong>{nextExam.exam.name}</strong><span>{ongoing ? '开始 ' : '开考 '}{formatDateTimeInZone(startMs)}</span></div><div className="welcome-exam-banner__count"><small>{ongoing ? '距结束' : '距开考'}</small>{fmtRemain(countdownMs)}</div></div>}
+    <div className={`welcome-grid${nextExam ? ' welcome-grid--has-exam' : ''}`}><button className={`welcome-card${nextExam ? ' welcome-card--featured' : ''}`} onClick={() => navigate('/exam')}><span className="welcome-card__icon">📊</span><span className="welcome-card__text"><span className="welcome-card__label">{ongoing ? '返回考试大屏' : nextExam ? '查看开考倒计时' : '查看考试大屏'}</span><span className="welcome-card__desc">{ongoing ? '正在进行，显示剩余时间' : nextExam ? '下一场考试与开考时间' : '暂无考试，可先进行安排'}</span></span></button><button className="welcome-card" onClick={() => navigate('/admin')}><span className="welcome-card__icon">⚙️</span><span className="welcome-card__text"><span className="welcome-card__label">管理后台</span><span className="welcome-card__desc">配置考试安排</span></span></button></div>
     {pwaAvailable && <div className="welcome-pwa"><span>📲 可添加到设备桌面，便于离线使用</span><button onClick={install}>添加</button><button className="welcome-pwa__dismiss" onClick={dismissPwa}>暂不</button></div>}
     <p className="welcome-idle-hint"><b>{idleLeft}</b> 秒后自动进入考试大屏</p><Watermark /></div>;
 }

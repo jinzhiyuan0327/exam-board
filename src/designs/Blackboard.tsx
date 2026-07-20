@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DesignProps } from './types';
 import { getSyncStatus } from '../utils/syncStatus';
+import FitText from '../components/FitText';
 import './Blackboard.css';
 
 /** 方案 03 · 校园黑板 — 黑板绿 + 暖白，中央圆形进度环。 */
@@ -35,7 +36,7 @@ export default function Blackboard({ vm, onDismissNotification, onBack, onAdmin,
           </div>
         </header>
 
-        <div className="bb__clock">{clock}</div>
+        <FitText className="bb__clock">{clock}</FitText>
         <p className="bb__date">{dateText}</p>
 
         {notification && (

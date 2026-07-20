@@ -17,6 +17,9 @@ function database() {
 // 以前每次 GET/POST 都做 6 次 DDL 往返→累计 2-3 秒。现改为按需且仅一次。)
 let migratePromise: Promise<void> | null = null;
 let updatedAtMigrationPromise: Promise<void> | null = null;
+type CachedGet = { body: string; etag: string; expiresAt: number };
+let getCache: CachedGet | null = null;
+const GET_CACHE_MS = 10_000;
 
 // 早期版本曾将 updated_at 建为 INTEGER；毫秒时间戳超过其上限时，将旧列无损扩展为 BIGINT。
 // 仅在旧表首次写入溢出、或按需建表迁移时执行，避免每次请求增加 DDL 往返。
@@ -82,7 +85,10 @@ function updatedAtIntegerOverflow(err: unknown): boolean {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Cache-Control', 'no-store');
+  const startedAt = Date.now();
+  // Short edge cache reduces repeated US→Singapore database reads while keeping updates prompt.
+  if (req.method === 'GET') res.setHeader('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=50');
+  else res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -92,6 +98,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sql = database();
 
     if (req.method === 'GET') {
+      // Warm cache and ETag avoid repeat database reads for unchanged display data.
+      if (getCache && getCache.expiresAt > Date.now()) {
+        res.setHeader('ETag', getCache.etag);
+        if (req.headers['if-none-match'] === getCache.etag) { res.status(304).end(); return; }
+        res.setHeader('Server-Timing', `app;dur=${Date.now() - startedAt}`); res.status(200).type('application/json').send(getCache.body); return;
+      }
       // 快路径：直接查询（一次往返）；仅当表/列缺失时才迁移后重试。
       const selectRow = async (): Promise<ExamRow[]> => (
         await sql`SELECT items, title, majors, active_major_id, alerts, updated_at FROM exam_data WHERE id = 1`
@@ -105,15 +117,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         rows = await selectRow();
       }
       const row = rows[0] ?? { items: [], title: '', majors: [], active_major_id: '', alerts: null, updated_at: 0 };
-      res.status(200).json({
-        ok: true,
-        items: row.items ?? [],
-        title: row.title ?? '',
-        majors: row.majors ?? [],
-        activeMajorId: row.active_major_id ?? '',
-        alerts: row.alerts ?? null,
-        updatedAt: Number(row.updated_at ?? 0),
-      });
+      const payload = { ok: true, items: row.items ?? [], title: row.title ?? '', majors: row.majors ?? [], activeMajorId: row.active_major_id ?? '', alerts: row.alerts ?? null, updatedAt: Number(row.updated_at ?? 0) };
+      const body = JSON.stringify(payload); const etag = `\"exam-${payload.updatedAt}\"`;
+      getCache = { body, etag, expiresAt: Date.now() + GET_CACHE_MS };
+      res.setHeader('ETag', etag);
+      if (req.headers['if-none-match'] === etag) { res.status(304).end(); return; }
+      res.setHeader('Server-Timing', `app;dur=${Date.now() - startedAt}`); res.status(200).type('application/json').send(body);
       return;
     }
 
@@ -161,7 +170,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(409).json({ ok: false, error: 'Conflict', remote: { items: row.items ?? [], title: row.title ?? '', majors: row.majors ?? [], activeMajorId: row.active_major_id ?? '', alerts: row.alerts ?? null, updatedAt: Number(row.updated_at ?? 0) } });
         return;
       }
-      res.status(200).json({ ok: true, updatedAt });
+      getCache = null;
+      res.setHeader('Server-Timing', `app;dur=${Date.now() - startedAt}`); res.status(200).json({ ok: true, updatedAt });
       return;
     }
 

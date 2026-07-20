@@ -62,7 +62,7 @@ export function getInstanceId(): string {
 export const APP_VERSION: string = __APP_VERSION__;
 export const COMMIT_SHA: string = __COMMIT_SHA__;
 
-async function send(event: string): Promise<boolean> {
+async function send(event: string, extra: Record<string, unknown> = {}): Promise<boolean> {
   if (!isEnabled()) return false;
   try {
     const body = {
@@ -75,6 +75,7 @@ async function send(event: string): Promise<boolean> {
       lang: navigator.language,
       userAgent: navigator.userAgent,
       clientTs: Date.now(),
+      ...extra,
     };
     const r = await fetch('/api/telemetry', {
       method: 'POST',
@@ -109,4 +110,17 @@ export async function reportOnStart(): Promise<void> {
 
 export async function reportNow(event = 'manual'): Promise<boolean> {
   return send(event);
+}
+/** Lightweight anonymous runtime signal for the author console; no exam content is sent. */
+export async function reportPerformance(): Promise<void> {
+  if (!isEnabled() || typeof performance === 'undefined') return;
+  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  const connection = (navigator as Navigator & { connection?: { effectiveType?: string; rtt?: number; saveData?: boolean } }).connection;
+  await send('perf', { perf: {
+    page: location.pathname, ttfbMs: nav ? Math.round(nav.responseStart) : null,
+    domReadyMs: nav ? Math.round(nav.domContentLoadedEventEnd) : null,
+    loadMs: nav ? Math.round(nav.loadEventEnd) : null,
+    transferBytes: nav?.transferSize ?? null, effectiveType: connection?.effectiveType ?? null,
+    networkRttMs: connection?.rtt ?? null, saveData: connection?.saveData ?? false,
+  }});
 }

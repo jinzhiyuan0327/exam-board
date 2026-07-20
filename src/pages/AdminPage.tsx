@@ -89,6 +89,8 @@ export default function AdminPage() {
   const [editing, setEditing] = useState<EditItem | null>(null);
   const [editError, setEditError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<ExamItem | null>(null);
+  const [lastDeletedExam, setLastDeletedExam] = useState<{ item: ExamItem; index: number } | null>(null);
+  const [collapsedList, setCollapsedList] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState('');
@@ -323,6 +325,8 @@ export default function AdminPage() {
     if (!editing.name.trim()) { setEditError('请输入考试名称'); return; }
     if (!editing.startTime || !editing.endTime) { setEditError('请输入开始与结束时间'); return; }
     if (new Date(editing.startTime) >= new Date(editing.endTime)) { setEditError('结束时间必须晚于开始时间'); return; }
+    const overlaps = items.some(x => x.id !== editing.id && x.enabled && editing.enabled && new Date(editing.startTime) < new Date(x.endTime) && new Date(editing.endTime) > new Date(x.startTime));
+    if (overlaps && !window.confirm('此科目与已启用科目时间重叠，仍要保存吗？')) return;
     if (new Date(editing.endTime).getTime() - new Date(editing.startTime).getTime() > 6 * 60 * 60 * 1000 && !longDurationConfirmed) {
       setEditError('本场时长超过 6 小时，请确认这是跨天或特殊安排。'); return;
     }
@@ -334,7 +338,8 @@ export default function AdminPage() {
   };
   /** 按明确的目标状态保存，按钮文案永远表达“下一步操作”，避免“已启用”被误认为点击后启用。 */
   const setExamEnabled = (id: string, enabled: boolean) => commitItems(items.map(x => x.id === id ? { ...x, enabled } : x));
-  const remove = (item: ExamItem) => { commitItems(items.filter(x => x.id !== item.id)); setDeleteTarget(null); };
+  const remove = (item: ExamItem) => { const index = items.findIndex(x => x.id === item.id); setLastDeletedExam({ item, index }); commitItems(items.filter(x => x.id !== item.id)); setDeleteTarget(null); };
+  const restoreExam = () => { if (!lastDeletedExam) return; const next = [...items]; next.splice(Math.min(lastDeletedExam.index, next.length), 0, lastDeletedExam.item); commitItems(next); setLastDeletedExam(null); };
 
   // ===== 统一提醒管理：保存时同步至云（与考试数据共用一个载荷） =====
   const commitAlerts = useCallback((next: AlertsSettings) => {
@@ -444,8 +449,8 @@ export default function AdminPage() {
         <div className="admin-tips"><p className="admin-tips__title">💡 使用说明</p><ul><li>每次修改会自动保存并同步到云（Neon）</li><li>离线时仍可编辑，数据先存本地，联网后自动回推</li><li>不同大型考试各自拥有独立的分考试列表</li><li>大屏每 30 秒自动拉取最新数据</li></ul></div>
       </aside>
       <main className="admin-main">
-        <div className="admin-list-header"><h2 className="admin-list-title">{activeMajor.name} · 分考试</h2><span className="admin-list-count">{items.length} 项</span></div>
-        {items.length === 0 ? <div className="admin-empty"><div className="admin-empty__icon">📅</div><p>当前大型考试暂无分考试，点击左侧“添加分考试”开始</p></div> : <ul className="admin-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>{items.map((item, index) => {
+        <div className="admin-list-header"><h2 className="admin-list-title">{activeMajor.name} · 分考试</h2><span className="admin-list-count">{items.length} 项</span>{items.length > 0 && <button className="admin-btn admin-btn--ghost admin-list-collapse" onClick={() => setCollapsedList(v => !v)} aria-expanded={!collapsedList}>{collapsedList ? "展开列表" : "折叠列表"}</button>}</div>{lastDeletedExam && <div className="admin-undo"><span>已删除「{lastDeletedExam.item.name}」</span><button className="admin-btn admin-btn--ghost" onClick={restoreExam}>撤销删除</button></div>}
+        {items.length === 0 ? <div className="admin-empty"><div className="admin-empty__icon">📅</div><p>当前大型考试暂无分考试，点击左侧“添加分考试”开始</p></div> : collapsedList ? <div className="admin-collapsed-hint">列表已折叠（共 {items.length} 项），点击“展开列表”查看</div> : <ul className="admin-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>{items.map((item, index) => {
           const status = STATUS[phase(item)];
           return <li className={`admin-item${!item.enabled ? ' admin-item--disabled' : ''}`} key={item.id}>
             <div className="admin-item__order"><span className="admin-item__order-num">#{index + 1}</span></div>

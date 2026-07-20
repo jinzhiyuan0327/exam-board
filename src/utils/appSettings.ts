@@ -35,11 +35,23 @@ export interface ExamSettings {
   updatedAt?: number;
 }
 
+export type TypographyFontId = 'design' | 'alibaba' | 'sourceHan' | 'smiley' | 'wenkai' | 'general' | 'jbmono';
+export interface TypographySettings {
+  navigation: TypographyFontId;
+  display: TypographyFontId;
+  content: TypographyFontId;
+  numeric: TypographyFontId;
+}
+export const DEFAULT_TYPOGRAPHY: TypographySettings = {
+  navigation: 'sourceHan', display: 'design', content: 'sourceHan', numeric: 'jbmono',
+};
+
 export interface AppSettings {
   version: number;
   hasVisited: boolean;
   general: {
     timeSync: TimeSyncSettings;
+    typography: TypographySettings;
   };
   exam: ExamSettings;
   /** 全屏提醒浮层的统一管理设置。 */
@@ -64,6 +76,7 @@ export const DEFAULT_ALERTS: AlertsSettings = {
   durationSec: 8,
   states: DEFAULT_ALERT_STATES,
   custom: [],
+  silentMode: 'all',
   updatedAt: 0,
 };
 
@@ -96,6 +109,7 @@ export function normalizeAlerts(raw: unknown): AlertsSettings {
     durationSec: Number.isFinite(src.durationSec) ? Math.min(20, Math.max(3, src.durationSec as number)) : 8,
     states,
     custom,
+    silentMode: (['all', 'keyOnly', 'pauseUntilExamEnd'] as const).includes(src.silentMode as never) ? (src.silentMode as 'all' | 'keyOnly' | 'pauseUntilExamEnd') : 'all',
     updatedAt: Number(src.updatedAt ?? 0),
   };
 }
@@ -109,9 +123,10 @@ export function genMajorId(): string {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  version: 2,
+  version: 3,
   hasVisited: false,
   general: {
+    typography: DEFAULT_TYPOGRAPHY,
     timeSync: {
       enabled: true,
       provider: 'timeApi',
@@ -201,6 +216,7 @@ export function getAppSettings(): AppSettings {
         ...DEFAULT_SETTINGS.general,
         ...parsed.general,
         timeSync: { ...DEFAULT_SETTINGS.general.timeSync, ...(parsed.general?.timeSync ?? {}) },
+        typography: { ...DEFAULT_TYPOGRAPHY, ...(parsed.general?.typography ?? {}) },
       },
       exam: normalizeExam(parsed.exam),
       alerts: normalizeAlerts(parsed.alerts),
@@ -228,7 +244,8 @@ export function updateAppSettings(partial: Partial<AppSettings> | ((c: AppSettin
       ...updates,
       general: updates.general
         ? { ...current.general, ...updates.general,
-            timeSync: { ...current.general.timeSync, ...(updates.general.timeSync ?? {}) } }
+            timeSync: { ...current.general.timeSync, ...(updates.general.timeSync ?? {}) },
+            typography: { ...current.general.typography, ...(updates.general.typography ?? {}) } }
         : current.general,
       exam: updates.exam ? normalizeExam({ ...current.exam, ...updates.exam }) : current.exam,
       alerts: updates.alerts ? normalizeAlerts({ ...current.alerts, ...updates.alerts }) : current.alerts,
