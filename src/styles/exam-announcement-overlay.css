@@ -6,13 +6,13 @@
 .eann-window {
   width: min(760px, 100%); max-height: min(82vh, 820px); display: flex; flex-direction: column;
   overflow: hidden; color: #e9edf2; background: #0d0f14; border: 1px solid rgba(255,255,255,.12);
-  border-radius: 16px; box-shadow: 0 26px 80px rgba(0,0,0,.48);
+  border-radius: 16px; box-shadow: 0 26px 80px rgba(0,0,0,.48); font-family: var(--font-region-content);
 }
 .eann-window__head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 15px;
   border-bottom: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.025);
 }
-.eann-window__title { margin: 0; font-size: 18px; line-height: 1.35; }
+.eann-window__title { margin: 0; font-size: 18px; line-height: 1.35; font-family: var(--font-region-display); }
 .eann-window__lead { margin: 6px 0 0; color: #8b95a1; font-size: 12.5px; line-height: 1.55; }
 .eann-window__close {
   width: 34px; height: 34px; flex: 0 0 auto; border: 1px solid rgba(255,255,255,.14); border-radius: 9px;
@@ -28,7 +28,7 @@
 .eann-card__body { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
 .eann-card__meta { margin-top: 10px; color: #8b95a1; font-size: 12px; }
 .eann-window .md-body { color: #d5dbe2; font-size: 13.5px; line-height: 1.75; overflow-wrap: anywhere; }
-.eann-window .md-body .md-h { color: #f2f5f8; font-weight: 700; line-height: 1.35; margin: 16px 0 8px; }
+.eann-window .md-body .md-h { color: #f2f5f8; font-weight: 700; line-height: 1.35; margin: 16px 0 8px; font-family: var(--font-region-display); }
 .eann-window .md-body .md-h1 { padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,.1); font-size: 19px; }
 .eann-window .md-body .md-h2 { font-size: 16px; }.eann-window .md-body .md-h3 { font-size: 14.5px; }
 .eann-window .md-body .md-p { margin: 8px 0; }.eann-window .md-body .md-ul,.eann-window .md-body .md-ol { margin: 8px 0; padding-left: 22px; }.eann-window .md-body li { margin: 3px 0; }
