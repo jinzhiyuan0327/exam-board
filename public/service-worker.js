@@ -1,7 +1,7 @@
-const CACHE = 'exam-board-shell-v1.21.7';
+const CACHE = 'exam-board-shell-v1.21.8';
 const RUNTIME = 'exam-board-runtime-v20';
 // Keep installation light. Fonts are cached after a design actually requests them.
-const CORE = ['/', '/index.html', '/favicon.svg', '/icon-512.png', '/manifest.webmanifest', '/fonts/exam-numeric-subset.ttf'];
+const CORE = ['/', '/index.html', '/favicon.svg', '/icon-512.png', '/manifest.webmanifest', '/fonts/exam-numeric-subset.ttf', '/fonts/source-han-sc-standard-subset.woff2'];
 
 async function precacheShell() {
   const cache = await caches.open(CACHE);
