@@ -123,7 +123,7 @@ npm run dev
 - **Welcome 启动页**：从 PWA 图标启动时统一进入 Welcome；无考试且未安装时仅显示低存在感安装提示。无操作倒计时改为 10 秒并实时显示剩余秒数。
 - **离线同步**：考试大屏在断网时使用本地考试快照和已保存的校时偏移继续走时；网络恢复、页面回到前台或正常轮询时会自动重新拉取云端数据。后台本地先保存，恢复联网后自动回推。
 - **冲突保护**：考试保存请求携带云端版本；发现另一设备已更新时服务端返回冲突而非静默覆盖，本机修改会保留并提示管理员确认。
-- **密码修改**：首次使用环境变量 `ADMIN_PASSWORD` ��������������录后会迁移为 Neon 数据库内的 scrypt 密码哈希。设置页可直接修改管理员密码，无需重新部署；修改后所有旧登录令牌失效。
+- **密码修改**：首次使用环境变量 `ADMIN_PASSWORD` ����������������录后会迁移为 Neon 数据库内的 scrypt 密码哈希。设置页可直接修改管理员密码，无需重新部署；修改后所有旧登录令牌失效。
 - **公告保护**：考试进行中收到公告更新只暂存，考试结束提醒完成后再展示最新公告。
 
 ## v1.16.0：公告阅读与排序
@@ -203,10 +203,10 @@ npm run dev
 
 - **离线刷新保障**：Service Worker 安装时解析并预缓存当前 `index.html` 引用的同源 JavaScript、CSS、图标和 manifest；保留上一份已验证应用壳，新版本资源未完成前不会淘汰旧缓存。离线刷新优先使用当前壳，失败时回退上一个可用壳。
 - **本地数据库迁移**：首次读取旧 `localStorage` 的 `AppSettings` 后自动镜像迁移至 IndexedDB；原 localStorage 继续保留作同步兼容与读取回退，迁移失败不会影响旧数据。
-- **冲突记录增强**：三方合并检测到同字段并发修改时，除保留本机编辑外同步把冲突数量、本机载荷和云端版本写入 IndexedDB 冲突历史；后台成功合并后明确提示已保留本机值。
+- **冲突记录增强**：三方合并检测到同字段并发修改时，除保留本机编辑外同步把冲突数量、本机载荷和云端版本写入 IndexedDB 冲突历史；后台成功合并后明确提示已保留���机值。
 - **考试顺序完全按时间**：按开考、结束时间和科目 ID 稳定排序，保存时重新生成兼容编号；后台移除上下移动控件，新增、编辑、导入和恢复后始终自动按真实时间线排列。
 - **后台启用逻辑修复**：按钮改为表示下一步动作——启用中的科目显示“停用”，已禁用科目显示“启用”，并提供明确影响说明。
-- **Welcome 视觉优化**：重做首页深色渐变层次、主倒计���卡���、移动端安全区和窄屏布局，强化当前/下一场信息与进入大屏入口。
+- **Welcome 视觉优化**：重做首页深色渐变层次、主���计���卡���、移动端安全区和窄屏布局，强化当前/下一场信息与进入大屏入口。
 - 桌面端（Tauri + SQLite + 托盘通知）列入后续版本计划，本版不包含桌面安装包。
 
 ## v1.17.2：移动端菜单与更新提示修复
@@ -298,6 +298,12 @@ npm run dev
 - **左侧时间数字间隔太小**：放宽蜜桃/冰蓝侧栏竖排数字的 `line-height` 与字距，`.ld-clock` 负字距收敛到接近 0。
 - **海报网格错位**：`.ld-poster-side` 由 3 列改为 2 列（`repeat(2,minmax(0,1fr))`），消除某些窗口宽度下第三列空缺导致的排版错位。
 
+## v1.21.6 — 手动同步误报修复 + Speed Insights + API 类型修复
+
+- 修复首页左下角手动同步按钮「已同步云端却仍显示同步失败」：同步走 ETag 协商，数据未变时服务器返回 304（即“已是最新”的成功态），但 `fetchExamsFromServer()` 在 304 分支返回本地基线快照 `getCloudSnapshot()`；一旦快照丢失（隐私模式/localStorage 配额清理/跨版本）就返回 `null`，而 `refresh()` 把 `null` 当成错误→显示同步失败。现在 304 分支：有快照则直接返回；快照缺失则去掉条件头重新完整拉取一次并回写快照/ETag，不再把“已同步”误判为失败（只改 `examService.ts`，不动 `useExamSync.ts`/`AdminPage.tsx`）。
+- 接入 **@vercel/speed-insights**：`package.json` 新增依赖 `^1.2.0`，`src/main.tsx` 引入 `SpeedInsights` 并在根渲染中渲出（全站生效）。部署前需执行一次 `npm install` 拉取该包。
+- 修复 `api/exams.ts` 的 TS2339：`res.type('application/json')` 是 Express 写法，Vercel 的 `VercelResponse` 无此方法；改为 `res.setHeader('Content-Type','application/json')`（第 105、125 行），运行时行为等价。
+
 ## v1.21.5 — 全屏提醒字体修复（考试提醒 + 公告提醒）
 
 - 修复全屏考试提醒大字在文案态（如「考试结束」「本场考试结束」）使用回退字体的问题：`exam-alert-overlay.css` 中 `.eao-hero` 此前用 `!important` 强制为仅含数字的 `--font-region-numeric`，导致中文不在数字子集内、掉到系统回退字体。现改为 `var(--font-region-numeric),var(--font-region-display)` 逐字回退：数字仍用等宽 JetBrains Mono，中文文案落到设计展示标题字体。此修复覆盖全部 13 套设计的全屏考试提醒。
@@ -323,6 +329,6 @@ npm run dev
 承接 v1.21.1 的数字显示修复，改用真·等宽字体代替之前的固定宽度 `Digits` 方案（后者会把数字撞得过宽）：
 
 - **新增 JetBrains Mono 数字子集**：从官方 TTF 子集化出 Regular / SemiBold / ExtraBold 三个权重的 WOFF（仅包含 `0-9 : . - / % , +` 等时钟必需字符，每份约 8.5KB），本地打包于 `public/fonts/jetbrains-mono-*-subset.woff`，不依赖任何字体 CDN 或客户端本地字体。SIL OFL 1.1 许可，随包附带 `JetBrainsMono-OFL.txt`。
-- **数字字体变量改为等宽栈**：`--font-numeric` / `--font-region-numeric` 主字体改为 `"Exam Mono Digit"`（JetBrains Mono），回退链依次为已内置的等宽子集与系统 monospace。数字天生等宽，不再依赖字体 tabular-nums 特性。
+- **数字字体变量改为等宽栈**：`--font-numeric` / `--font-region-numeric` 主字���改为 `"Exam Mono Digit"`（JetBrains Mono），回退链依次为已内置的等宽子集与系统 monospace。数字天生等宽，不再依赖字体 tabular-nums 特性。
 - **移除 `Digits` 组件及其包裹**：删除 `src/components/Digits.tsx` 与 `exam.css` 中的 `.dg-*` 撞宽规则，13 套设计的时钟/数字回归组件本身渲染，修复“数字太宽”。
 - v1.21.1 的其他修复（移除右上角三点菜单、霓虹石英/影院红线顶栏 z-index、蜜桃/冰蓝竖排行距、海报侧栏两列）均保留。

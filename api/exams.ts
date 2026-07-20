@@ -102,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (getCache && getCache.expiresAt > Date.now()) {
         res.setHeader('ETag', getCache.etag);
         if (req.headers['if-none-match'] === getCache.etag) { res.status(304).end(); return; }
-        res.setHeader('Server-Timing', `app;dur=${Date.now() - startedAt}`); res.status(200).type('application/json').send(getCache.body); return;
+        res.setHeader('Server-Timing', `app;dur=${Date.now() - startedAt}`); res.setHeader('Content-Type', 'application/json'); res.status(200).send(getCache.body); return;
       }
       // 快路径：直接查询（一次往返）；仅当表/列缺失时才迁移后重试。
       const selectRow = async (): Promise<ExamRow[]> => (
@@ -122,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       getCache = { body, etag, expiresAt: Date.now() + GET_CACHE_MS };
       res.setHeader('ETag', etag);
       if (req.headers['if-none-match'] === etag) { res.status(304).end(); return; }
-      res.setHeader('Server-Timing', `app;dur=${Date.now() - startedAt}`); res.status(200).type('application/json').send(body);
+      res.setHeader('Server-Timing', `app;dur=${Date.now() - startedAt}`); res.setHeader('Content-Type', 'application/json'); res.status(200).send(body);
       return;
     }
 

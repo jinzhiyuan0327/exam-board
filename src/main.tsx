@@ -7,6 +7,7 @@ import { startTimeSyncManager } from './utils/timeSync';
 import { registerPwa } from './services/pwa';
 import { bindTypographySettings } from './utils/typographySettings';
 import { reportPerformance } from './services/telemetry';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Global styles
 const style = document.createElement('style');
@@ -28,5 +29,6 @@ window.addEventListener('load', () => window.setTimeout(() => { void reportPerfo
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
+    <SpeedInsights />
   </React.StrictMode>
 );

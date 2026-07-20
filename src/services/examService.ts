@@ -50,7 +50,21 @@ export async function fetchExamsFromServer(): Promise<ExamPayload | null> {
     if (etag) headers['If-None-Match'] = etag;
     // no-cache validates at the edge but does not force a database round-trip when the ETag is unchanged.
     const res = await fetch(API_URL, { method: 'GET', headers, cache: 'no-cache' });
-    if (res.status === 304) return getCloudSnapshot();
+    if (res.status === 304) {
+      // 304 = 云端数据自上次拉取后未变更，本身即“已同步”成功状态。
+      const snap = getCloudSnapshot();
+      if (snap) return snap;
+      // 极少数情况下本地基线快照丢失（隐私模式/配额清理/跨版本），但服务端已确认未变更；
+      // 去掉条件头重新完整拉取一次，避免把“已同步”误判为同步失败。
+      const full = await fetch(API_URL, { method: 'GET', cache: 'no-cache' });
+      if (!full.ok) return null;
+      const fullEtag = full.headers.get('ETag'); if (fullEtag) localStorage.setItem(CLOUD_ETAG_KEY, fullEtag);
+      const fullData = await full.json();
+      if (!fullData?.ok) return null;
+      const fullPayload = toPayload(fullData);
+      rememberCloudSnapshot(fullPayload);
+      return fullPayload;
+    }
     if (!res.ok) return null;
     const freshEtag = res.headers.get('ETag'); if (freshEtag) localStorage.setItem(CLOUD_ETAG_KEY, freshEtag);
     const data = await res.json();
