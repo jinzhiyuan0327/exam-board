@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const imgOrigin = new URL(ANNOUNCE_URL).origin;
     const toAbs = (c: unknown) =>
       typeof c === 'string'
-        ? c.replaceAll('](/api/announcement-images', `](${imgOrigin}/api/announcement-images`)
+        ? c.split('](/api/announcement-images').join(`](${imgOrigin}/api/announcement-images`)
         : c;
     const list = Array.isArray(data?.announcements)
       ? data.announcements.map((a: Record<string, unknown>) => ({ ...a, content: toAbs(a.content) }))
