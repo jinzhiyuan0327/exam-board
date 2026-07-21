@@ -60,6 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       country,
       ipHash,
       clientTs: num(b.clientTs),
+      perf: b.perf && typeof b.perf === 'object' && !Array.isArray(b.perf) ? b.perf : null,
     };
 
     const controller = new AbortController();

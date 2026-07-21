@@ -24,7 +24,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
     const data = await r.json();
-    res.json({ ok: true, announcements: Array.isArray(data?.announcements) ? data.announcements : [] });
+    const imgOrigin = new URL(ANNOUNCE_URL).origin;
+    const toAbs = (c: unknown) =>
+      typeof c === 'string'
+        ? c.replaceAll('](/api/announcement-images', `](${imgOrigin}/api/announcement-images`)
+        : c;
+    const list = Array.isArray(data?.announcements)
+      ? data.announcements.map((a: Record<string, unknown>) => ({ ...a, content: toAbs(a.content) }))
+      : [];
+    res.json({ ok: true, announcements: list });
   } catch (e) {
     res.status(500).json({ ok: false, error: (e as Error).message, announcements: [] });
   }
