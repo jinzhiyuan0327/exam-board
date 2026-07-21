@@ -38,6 +38,10 @@ export interface DesignProps {
   onOpenAnnouncements: () => void;
   /** 打开展示设计切换窗（入口位于各设计顶栏，避免悬浮按钮遮挡元素）。 */
   onSwitchDesign: () => void;
+  /** 当前是否处于全屏展示状态。 */
+  isFullscreen: boolean;
+  /** 切换 / 退出全屏（入口位于各设计顶栏，与其它操作按钮同排，不遮挡元素）。 */
+  onToggleFullscreen: () => void;
 }
 
 export type DesignComponent = React.ComponentType<DesignProps>;

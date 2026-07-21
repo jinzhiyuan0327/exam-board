@@ -20,3 +20,54 @@
 .exam-design-loading{position:fixed;inset:0;display:grid;place-items:center;background:#101216;color:#f4f7fb;font:600 16px var(--font-region-content,system-ui)}
 /* Responsive safety rail: design internals may scale, but never grow the viewport. */
 .exam-root,.exam-root *{min-width:0}.exam-root{width:100%;min-height:100dvh;overflow:hidden;isolation:isolate}.exam-root button{max-width:100%;touch-action:manipulation}.exam-root [class*="title"],.exam-root [class*="subject"],.exam-root [class*="headline"],.exam-root [class*="master"]{overflow:hidden;text-overflow:ellipsis}.exam-root [class*="clock"],.exam-root [class*="time"],.exam-root [class*="count"],.exam-root [class*="remaining"]{font-variant-numeric:tabular-nums;white-space:nowrap}.exam-root [class*="top"],.exam-root [class*="head"]{max-width:100%;overflow:hidden}.exam-root img,.exam-root svg{max-width:100%;height:auto}.exam-root [class*="actions"],.exam-root [class*="buttons"]{flex-wrap:nowrap}.exam-root [class*="notify"],.exam-root [class*="notice"]{max-width:min(92vw,900px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media(max-width:720px){.exam-root [class*="top"],.exam-root [class*="head"]{gap:clamp(5px,1.5vw,10px)!important}.exam-root [class*="master"],.exam-root [class*="title"]{max-width:48vw}.exam-root [class*="actions"] button,.exam-root [class*="buttons"] button{min-width:32px;padding-inline:clamp(5px,1.5vw,9px)!important}.exam-root [class*="meta"],.exam-root [class*="label"]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.exam-root [class*="card"],.exam-root [class*="panel"]{min-width:0!important}}@media(max-height:600px){.exam-root [class*="foot"],.exam-root [class*="bottom"]{padding-block:clamp(5px,1vh,12px)!important}.exam-root [class*="top"],.exam-root [class*="head"]{padding-block:clamp(6px,1.5vh,14px)!important}}
+
+/* ===== v1.22.0 全屏 / 触摸大屏适配 ===== */
+/* 触摸投屏：禁止长按选中、去除点按高亮、禁止橡皮筋滚动，避免误操作影响展示。 */
+.exam-root{ -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; overscroll-behavior:none; }
+.exam-root button{ -webkit-tap-highlight-color:transparent; }
+/* 粗指针（触摸屏）下放大顶栏与同步按钮的可点区域至 ≥44px，符合触控热区标准；
+   仅在较宽视口生效，避免挤压窄屏布局。 */
+@media (pointer:coarse) and (min-width:721px){
+  .exam-root [class*="actions"] button,
+  .exam-root [class*="head-right"] button,
+  .exam-root [class*="head-actions"] button,
+  .exam-root [class*="top-right"] button{ min-width:44px; min-height:44px; }
+  .exam-sync-action__button{ min-height:44px; padding-inline:14px; }
+}
+
+/* 矮窗口双保险：短视口（含带浏览器工具栏的窗口化投屏）强制收紧时钟行高，
+   并进一步用 vh 夹住字号，杜绝大时钟纵向压住科目名 / 标题。
+   注：各时钟用 FitText(transform:scale) 适配宽度，这里改 font-size 不冲突。 */
+@media (max-height:640px){
+  .exam-root [class*="clock"]{ line-height:1 !important; }
+}
+@media (max-height:560px){
+  .bb__clock{ font-size:min(clamp(52px,8vw,150px),24vh)!important; margin-top:clamp(8px,1.8vh,18px)!important; }
+  .cf__clock{ font-size:min(clamp(60px,10vw,200px),30vh)!important; }
+  .nd-clock{ font-size:min(clamp(76px,12vw,240px),30vh)!important; margin:clamp(8px,1.6vh,22px) auto 12px!important; }
+  .em__clock{ font-size:min(clamp(84px,14vw,240px),32vh)!important; }
+  .ed__clock{ line-height:.86!important; }
+  .ld-primary .ld-clock,
+  .ld-orbit-main>.ld-clock,
+  .ld-ice-main .ld-clock,
+  .ld-poster .ld-primary .ld-clock,
+  .ld-palette .ld-primary .ld-clock{ font-size:min(clamp(64px,11vw,220px),26vh)!important; }
+}
+
+/* 无操作自动全屏的引导浮层：静置 1 分钟且浏览器阻止自动全屏时出现，
+   由用户轻触完成手势授权。任意点击遮罩即进入全屏。 */
+.exam-fs-prompt{ position:fixed; inset:0; z-index:60; display:grid; place-items:center;
+  background:rgba(6,10,18,.72); backdrop-filter:blur(6px); animation:exam-fs-fade .25s ease; cursor:pointer; }
+.exam-fs-prompt__card{ max-width:min(88vw,420px); padding:clamp(24px,4vw,40px); border-radius:20px; text-align:center;
+  color:#eaf3ff; background:rgba(16,26,44,.94); border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 18px 60px rgba(0,0,0,.5); cursor:default; }
+.exam-fs-prompt__icon{ font-size:clamp(40px,7vw,60px); line-height:1; margin-bottom:12px; }
+.exam-fs-prompt__title{ margin:0 0 8px; font:700 clamp(19px,2.4vw,26px)/1.3 system-ui,sans-serif; }
+.exam-fs-prompt__hint{ margin:0 0 20px; font:500 clamp(13px,1.4vw,15px)/1.5 system-ui,sans-serif; color:rgba(214,228,247,.72); }
+.exam-fs-prompt__actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.exam-fs-prompt__go,.exam-fs-prompt__later{ min-height:46px; padding:0 22px; border-radius:12px; font:700 15px/1 system-ui,sans-serif; cursor:pointer; }
+.exam-fs-prompt__go{ border:0; color:#04121f; background:#5db4ff; }
+.exam-fs-prompt__go:hover{ background:#7cc4ff; }
+.exam-fs-prompt__later{ border:1px solid rgba(255,255,255,.22); background:transparent; color:#c7d6ea; }
+.exam-fs-prompt__later:hover{ background:rgba(255,255,255,.08); }
+@keyframes exam-fs-fade{ from{opacity:0} to{opacity:1} }

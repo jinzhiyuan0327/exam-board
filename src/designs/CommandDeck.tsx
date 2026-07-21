@@ -8,7 +8,7 @@ import './CommandDeck.css';
  * 方案 01 · 深色指挥舱
  * 默认推荐方案：多教室电视、监考室、中控 LED。
  */
-export default function CommandDeck({ vm, onDismissNotification, onBack, onAdmin, onOpenAnnouncements, onSwitchDesign }: DesignProps) {
+export default function CommandDeck({ vm, onDismissNotification, onBack, onAdmin, onOpenAnnouncements, onSwitchDesign, isFullscreen, onToggleFullscreen }: DesignProps) {
   const {
     masterTitle, phase, clock, dateText, currentName, startHM, endHM,
     progressPct, elapsedText, remainingText, countdownText,
@@ -55,6 +55,7 @@ export default function CommandDeck({ vm, onDismissNotification, onBack, onAdmin
           </span>
           <button className="cd__ghost" onClick={onOpenAnnouncements} aria-label="查看公告" title="系统公告">📢</button>
           <button className="cd__ghost" onClick={onSwitchDesign} aria-label="切换设计" title="切换展示设计">▣</button>
+          <button className="cd__ghost" onClick={onToggleFullscreen} aria-label={isFullscreen ? '退出全屏' : '进入全屏'} title={isFullscreen ? '退出全屏' : '进入全屏'}>{isFullscreen ? '✕' : '⛶'}</button>
           <button className="cd__ghost" onClick={onAdmin} aria-label="管理后台">⚙</button>
         </div>
       </header>

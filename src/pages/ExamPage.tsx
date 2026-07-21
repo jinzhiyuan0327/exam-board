@@ -8,6 +8,7 @@ import {
 import { useExamNotify } from '../hooks/useExamNotify';
 import { useExamSync } from '../hooks/useExamSync';
 import { useAlertOverlay } from '../hooks/useAlertOverlay';
+import { useFullscreen } from '../hooks/useFullscreen';
 import ExamAlertOverlay from '../components/ExamAlertOverlay';
 import ExamSyncAction from '../components/ExamSyncAction';
 import Watermark from '../components/Watermark';
@@ -34,6 +35,7 @@ interface RawState {
 const WEEKDAY_CN = ['日', '一', '二', '三', '四', '五', '六'];
 const ANNOUNCEMENT_SEEN_KEY = 'exam_board_seen_announcement_version';
 const ANNOUNCEMENT_POLL_MS = 60 * 1000;
+const AUTO_FULLSCREEN_IDLE_MS = 60 * 1000; // 大屏无操作 1 分钟后尝试自动进入全屏
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 function announcementVersion(list: Announcement[]): string {
@@ -235,6 +237,37 @@ export default function ExamPage() {
     setDesign(id); setDesignId(id);
   }, []);
 
+  // 全屏展示：顶栏按钮手动切换 + 无操作 1 分钟自动进入。
+  const { isFullscreen, enter: enterFullscreen, toggle: toggleFullscreen } = useFullscreen();
+  const [fsPromptOpen, setFsPromptOpen] = useState(false);
+
+  // 自动全屏：进入全屏后停表；退出后重新计时。部分浏览器会因缺少用户手势而
+  // 拒绝 requestFullscreen，此时回退到“轻触进入全屏”引导浮层，由用户点击完成手势授权。
+  useEffect(() => {
+    if (isFullscreen) { setFsPromptOpen(false); return; }
+    let deadline = Date.now() + AUTO_FULLSCREEN_IDLE_MS;
+    let armed = true;
+    const bump = () => { deadline = Date.now() + AUTO_FULLSCREEN_IDLE_MS; armed = true; };
+    const events: Array<keyof WindowEventMap> = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel'];
+    events.forEach(e => window.addEventListener(e, bump, { passive: true }));
+    const id = window.setInterval(() => {
+      if (!armed || document.hidden) return;
+      if (Date.now() >= deadline) {
+        armed = false;
+        void enterFullscreen().catch(() => setFsPromptOpen(true));
+      }
+    }, 1000);
+    return () => {
+      window.clearInterval(id);
+      events.forEach(e => window.removeEventListener(e, bump));
+    };
+  }, [isFullscreen, enterFullscreen]);
+
+  const confirmFullscreen = useCallback(() => {
+    setFsPromptOpen(false);
+    void enterFullscreen().catch(() => {});
+  }, [enterFullscreen]);
+
   return (
     <div className="exam-root">
       <Suspense fallback={<div className="exam-design-loading">正在载入展示设计…</div>}><Design
@@ -244,6 +277,8 @@ export default function ExamPage() {
         onAdmin={() => navigate('/admin')}
         onOpenAnnouncements={openAnnouncements}
         onSwitchDesign={() => setSwitcherOpen(true)}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={() => { void toggleFullscreen(); }}
       /></Suspense>
       <Watermark exam />
       <ExamSyncAction
@@ -268,6 +303,19 @@ export default function ExamPage() {
         masterTitle={title}
         timeSynced={isTimeSyncReady()}
       />
+      {fsPromptOpen && !isFullscreen && (
+        <div className="exam-fs-prompt" role="dialog" aria-label="进入全屏展示" onClick={confirmFullscreen}>
+          <div className="exam-fs-prompt__card" onClick={e => e.stopPropagation()}>
+            <div className="exam-fs-prompt__icon" aria-hidden="true">⛶</div>
+            <p className="exam-fs-prompt__title">轻触进入全屏展示</p>
+            <p className="exam-fs-prompt__hint">大屏已静置 1 分钟，建议全屏投放以获得最佳布局</p>
+            <div className="exam-fs-prompt__actions">
+              <button type="button" className="exam-fs-prompt__go" onClick={confirmFullscreen}>进入全屏</button>
+              <button type="button" className="exam-fs-prompt__later" onClick={() => setFsPromptOpen(false)}>暂不</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

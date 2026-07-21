@@ -5,7 +5,7 @@ import FitText from '../components/FitText';
 import './Blackboard.css';
 
 /** 方案 03 · 校园黑板 — 黑板绿 + 暖白，中央圆形进度环。 */
-export default function Blackboard({ vm, onDismissNotification, onBack, onAdmin, onOpenAnnouncements, onSwitchDesign }: DesignProps) {
+export default function Blackboard({ vm, onDismissNotification, onBack, onAdmin, onOpenAnnouncements, onSwitchDesign, isFullscreen, onToggleFullscreen }: DesignProps) {
   const {
     masterTitle, phase, clock, dateText, currentName, startHM, endHM,
     progressPct, elapsedText, remainingText, countdownText,
@@ -32,6 +32,7 @@ export default function Blackboard({ vm, onDismissNotification, onBack, onAdmin,
             <span className={`bb__sync is-${sync.tone}`}>{sync.text}</span>
             <button className="bb__ghost" onClick={onOpenAnnouncements} aria-label="查看公告" title="系统公告">📢</button>
             <button className="bb__ghost" onClick={onSwitchDesign} aria-label="切换设计" title="切换展示设计">▣</button>
+            <button className="bb__ghost" onClick={onToggleFullscreen} aria-label={isFullscreen ? '退出全屏' : '进入全屏'} title={isFullscreen ? '退出全屏' : '进入全屏'}>{isFullscreen ? '✕' : '⛶'}</button>
             <button className="bb__ghost" onClick={onAdmin} aria-label="管理">⚙</button>
           </div>
         </header>
