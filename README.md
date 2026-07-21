@@ -2,6 +2,8 @@
 
 独立部署的考试大屏 + 管理后台，基于 React + Vite + Vercel Serverless。
 
+![项目图片](https://raw.githubusercontent.com/jinzhiyuan0327/exam-board/refs/heads/main/IMG_20260717_222529.png)
+
 ## 功能
 - 🖥️ **考试大屏**：全屏深色大时钟 + 实时倒计时 + 进度条 + 开考提醒
 - ⚙️ **管理后台**：添加/编辑/排序/导入考试科目，一键同步到服务器
