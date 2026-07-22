@@ -39,3 +39,6 @@
 .ld-primary{min-width:0}
 .ld-peach-main>aside,.ld-ice-main>aside{overflow:hidden}
 .ld-poster-side>b{overflow:hidden}
+
+/* v1.23.0 手机端安全区（仅色卡仪表盘，已适配） */
+@media (max-width:620px){ .ld-palette{ padding-top:max(env(safe-area-inset-top),18px); } }

@@ -56,3 +56,6 @@
 .em{--font-design-display:var(--font-emergency)}.em__head,.em__date,.em__subject,.em__track-meta,.em__card-k,.em__notify{font-family:var(--font-region-navigation)}.em__sys,.em__card-v{font-family:var(--font-region-display)}.em__empty{font-family:var(--font-region-content)}.em__clock{font-family:var(--font-region-numeric)}
 
 .em__clock.eao-fit-text{margin-bottom:0;transform-origin:left center}
+
+/* v1.23.0 手机端安全区 */
+@media (max-width:620px){ .em{ padding-top:env(safe-area-inset-top); } }

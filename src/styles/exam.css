@@ -71,3 +71,13 @@
 .exam-fs-prompt__later{ border:1px solid rgba(255,255,255,.22); background:transparent; color:#c7d6ea; }
 .exam-fs-prompt__later:hover{ background:rgba(255,255,255,.08); }
 @keyframes exam-fs-fade{ from{opacity:0} to{opacity:1} }
+
+/* ===== v1.23.0 全屏退出按钮 + 手机端提示 ===== */
+.exam-fs-exit{position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:70;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #ffffff40;border-radius:999px;background:#0b1220cc;color:#fff;font-size:13px;font-weight:700;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 6px 20px #0006}
+.exam-fs-exit:hover{background:#0b1220ee}
+.exam-fs-exit:focus-visible{outline:3px solid #90c7ff;outline-offset:2px}
+@media(pointer:coarse){.exam-fs-exit{padding:11px 18px;font-size:15px}}
+.exam-mobile-notice{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;z-index:65;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;background:#1b2740f2;color:#eaf1ff;font-size:13px;line-height:1.45;box-shadow:0 8px 24px #0007;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.exam-mobile-notice__actions{display:flex;align-items:center;gap:8px;flex:none}
+.exam-mobile-notice button{border:0;border-radius:8px;background:#4f8cff;color:#fff;font-weight:700;font-size:12.5px;padding:7px 12px;cursor:pointer}
+.exam-mobile-notice__close{background:#ffffff1f!important;width:32px;padding:7px 0!important;font-size:16px!important;line-height:1}

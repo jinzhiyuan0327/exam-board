@@ -150,3 +150,6 @@
 .cd{--font-design-display:var(--font-command)}.cd__top,.cd__master,.cd__date,.cd__period,.cd__track-meta,.cd__card-label,.cd__foot,.cd__notify{font-family:var(--font-region-navigation)}.cd__headline,.cd__card-value{font-family:var(--font-region-display)}.cd__empty-hint{font-family:var(--font-region-content)}.cd__clock{font-family:var(--font-region-numeric)}
 
 .cd__clock.eao-fit-text{margin:0}
+
+/* v1.23.0 手机端安全区 */
+@media (max-width:620px){ .cd{ padding-top:max(env(safe-area-inset-top),16px); } }

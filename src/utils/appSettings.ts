@@ -46,12 +46,17 @@ export const DEFAULT_TYPOGRAPHY: TypographySettings = {
   navigation: 'sourceHan', display: 'design', content: 'sourceHan', numeric: 'jbmono',
 };
 
+/** 动效模式：auto=跟随系统“减少动态效果”偏好；best-effects=开满动效；best-performance=关停动画/过渡/毛玻璃以省性能。 */
+export type MotionMode = 'auto' | 'best-effects' | 'best-performance';
+
 export interface AppSettings {
   version: number;
   hasVisited: boolean;
   general: {
     timeSync: TimeSyncSettings;
     typography: TypographySettings;
+    /** 大屏与全局动效模式。 */
+    motionMode: MotionMode;
   };
   exam: ExamSettings;
   /** 全屏提醒浮层的统一管理设置。 */
@@ -127,6 +132,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   hasVisited: false,
   general: {
     typography: DEFAULT_TYPOGRAPHY,
+    motionMode: 'auto',
     timeSync: {
       enabled: true,
       provider: 'timeApi',
@@ -265,6 +271,10 @@ export function updateExamSettings(updates: Partial<ExamSettings>): void {
 
 export function updateAlertsSettings(updates: Partial<AlertsSettings>): void {
   updateAppSettings(c => ({ alerts: normalizeAlerts({ ...c.alerts, ...updates }) }));
+}
+
+export function updateMotionMode(mode: MotionMode): void {
+  updateAppSettings(c => ({ general: { ...c.general, motionMode: mode } }));
 }
 
 export function updateTimeSyncSettings(

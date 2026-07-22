@@ -9,10 +9,11 @@ import { useExamNotify } from '../hooks/useExamNotify';
 import { useExamSync } from '../hooks/useExamSync';
 import { useAlertOverlay } from '../hooks/useAlertOverlay';
 import { useFullscreen } from '../hooks/useFullscreen';
+import { useIsMobile } from '../hooks/useIsMobile';
 import ExamAlertOverlay from '../components/ExamAlertOverlay';
 import ExamSyncAction from '../components/ExamSyncAction';
 import Watermark from '../components/Watermark';
-import { getDesign } from '../designs/registry';
+import { getDesign, isMobileReadyDesign } from '../designs/registry';
 import { getDesignId, setDesignId } from '../utils/designPref';
 import DesignSwitcher from '../components/DesignSwitcher';
 import ExamAnnouncementOverlay from '../components/ExamAnnouncementOverlay';
@@ -238,13 +239,17 @@ export default function ExamPage() {
   }, []);
 
   // 全屏展示：顶栏按钮手动切换 + 无操作 1 分钟自动进入。
-  const { isFullscreen, enter: enterFullscreen, toggle: toggleFullscreen } = useFullscreen();
+  const { isFullscreen, enter: enterFullscreen, exit: exitFullscreen, toggle: toggleFullscreen } = useFullscreen();
   const [fsPromptOpen, setFsPromptOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const [mobileNoticeDismissed, setMobileNoticeDismissed] = useState(false);
+  const endedExitRef = useRef(false);
 
   // 自动全屏：进入全屏后停表；退出后重新计时。部分浏览器会因缺少用户手势而
   // 拒绝 requestFullscreen，此时回退到“轻触进入全屏”引导浮层，由用户点击完成手势授权。
   useEffect(() => {
     if (isFullscreen) { setFsPromptOpen(false); return; }
+    if (raw.phase === 'ended') return; // 考试结束后不再自动进入全屏，便于监考离场操作
     let deadline = Date.now() + AUTO_FULLSCREEN_IDLE_MS;
     let armed = true;
     const bump = () => { deadline = Date.now() + AUTO_FULLSCREEN_IDLE_MS; armed = true; };
@@ -261,7 +266,34 @@ export default function ExamPage() {
       window.clearInterval(id);
       events.forEach(e => window.removeEventListener(e, bump));
     };
-  }, [isFullscreen, enterFullscreen]);
+  }, [isFullscreen, enterFullscreen, raw.phase]);
+
+  // 考试结束后自动退出全屏，避免监考老师找不到退出入口。
+  useEffect(() => {
+    if (raw.phase === 'ended') {
+      if (!endedExitRef.current && isFullscreen) {
+        endedExitRef.current = true;
+        void exitFullscreen().catch(() => {});
+      }
+    } else {
+      endedExitRef.current = false;
+    }
+  }, [raw.phase, isFullscreen, exitFullscreen]);
+
+  // 屏幕常亮：防止大屏/手机在展示期间自动熄屏。
+  useEffect(() => {
+    let lock: { release?: () => Promise<void> } | null = null;
+    const request = async () => {
+      try {
+        const wl = (navigator as unknown as { wakeLock?: { request: (t: string) => Promise<{ release?: () => Promise<void> }> } }).wakeLock;
+        if (wl && document.visibilityState === 'visible') lock = await wl.request('screen');
+      } catch { /* 不支持或被拒绝时静默降级 */ }
+    };
+    const onVis = () => { if (document.visibilityState === 'visible') void request(); };
+    void request();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { document.removeEventListener('visibilitychange', onVis); try { void lock?.release?.(); } catch { /* noop */ } };
+  }, []);
 
   const confirmFullscreen = useCallback(() => {
     setFsPromptOpen(false);
@@ -303,6 +335,24 @@ export default function ExamPage() {
         masterTitle={title}
         timeSynced={isTimeSyncReady()}
       />
+      {isFullscreen && (
+        <button
+          type="button"
+          className="exam-fs-exit"
+          onClick={() => { void toggleFullscreen(); }}
+          aria-label="退出全屏（按 Esc）"
+          title="退出全屏（按 Esc）"
+        >✕ 退出全屏</button>
+      )}
+      {isMobile && !isMobileReadyDesign(designId) && !mobileNoticeDismissed && (
+        <div className="exam-mobile-notice" role="alert">
+          <span>当前设计未针对手机端优化，请到电脑端查看最优效果。</span>
+          <div className="exam-mobile-notice__actions">
+            <button type="button" onClick={() => setSwitcherOpen(true)}>切换适配设计</button>
+            <button type="button" className="exam-mobile-notice__close" aria-label="关闭提示" onClick={() => setMobileNoticeDismissed(true)}>×</button>
+          </div>
+        </div>
+      )}
       {fsPromptOpen && !isFullscreen && (
         <div className="exam-fs-prompt" role="dialog" aria-label="进入全屏展示" onClick={confirmFullscreen}>
           <div className="exam-fs-prompt__card" onClick={e => e.stopPropagation()}>

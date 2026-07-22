@@ -57,4 +57,6 @@ export interface DesignMeta {
   component: DesignComponent;
   /** 样例缩略图（data URI），用于切换窗预览。 */
   thumb: string;
+  /** 是否已针对手机端窄屏做过布局适配。未适配的设计在手机端会被切换窗置灰并提示“电脑端最佳”。 */
+  mobileReady: boolean;
 }

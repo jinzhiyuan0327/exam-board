@@ -54,3 +54,6 @@
 .cf{--font-design-display:var(--font-clean)}.cf__top,.cf__master,.cf__date,.cf__period,.cf__meta-k,.cf__notify{font-family:var(--font-region-navigation)}.cf__headline{font-family:var(--font-region-display)}.cf__meta-v,.cf__next{font-family:var(--font-region-content)}.cf__clock{font-family:var(--font-region-numeric)}
 
 .cf__clock.eao-fit-text{margin:0}
+
+/* v1.23.0 手机端安全区（刘海/刘口遮挡） */
+@media (max-width:620px){ .cf{ padding-top:max(env(safe-area-inset-top),20px); padding-left:max(env(safe-area-inset-left),16px); padding-right:max(env(safe-area-inset-right),16px); } }

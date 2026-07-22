@@ -6,9 +6,10 @@ import {
   updateTimeSyncSettings,
   APP_SETTINGS_KEY,
 } from '../utils/appSettings';
-import { DEFAULT_TYPOGRAPHY, updateAlertsSettings } from '../utils/appSettings';
-import type { TimeSyncSettings, TypographyFontId, TypographySettings } from '../utils/appSettings';
+import { DEFAULT_TYPOGRAPHY, updateAlertsSettings, updateMotionMode } from '../utils/appSettings';
+import type { TimeSyncSettings, TypographyFontId, TypographySettings, MotionMode } from '../utils/appSettings';
 import { applyTypographySettings } from '../utils/typographySettings';
+import { applyMotionSettings } from '../utils/motionSettings';
 import { isTimeSyncReady, formatDateTimeInZone } from '../utils/timeSource';
 import { getDesignId, setDesignId } from '../utils/designPref';
 import { DESIGNS } from '../designs/registry';
@@ -67,6 +68,7 @@ export default function SettingsPage() {
   const [silentMode, setSilentMode] = useState<'all' | 'keyOnly' | 'pauseUntilExamEnd'>(() => getAppSettings().alerts.silentMode ?? 'all');
   const [designId, setDesign] = useState<string>(() => getDesignId());
   const [typography, setTypography] = useState<TypographySettings>(() => getAppSettings().general.typography);
+  const [motionMode, setMotionMode] = useState<MotionMode>(() => getAppSettings().general.motionMode);
   const [syncing, setSyncing] = useState(false);
   const [readmeOpen, setReadmeOpen] = useState(false);
   const [teleOn, setTeleOn] = useState(() => isEnabled());
@@ -110,7 +112,7 @@ export default function SettingsPage() {
   };
 
   const doRedeploy = async () => {
-    if (!window.confirm('确定触发 Vercel 重新部署？\n将从 GitHub 拉取最新代码并重新构建，约需 1–3 分钟，完成后刷新页面即为新版本。')) return;
+    if (!window.confirm('确定触发 Vercel 重新部署？\n将从 GitHub 拉取最新代码并重新构���，约需 1–3 分钟，完成后刷新页面即为新版本。')) return;
     setRedeploy({ status: 'running', msg: '已触发，正在部署…' });
     const r = await triggerRedeploy();
     if (r.ok) setRedeploy({ status: 'done', msg: '已触发部署 ✓ 请稍后在 Vercel 查看进度，构建完成后刷新页面。' });
@@ -143,6 +145,7 @@ export default function SettingsPage() {
   };
 
   const patchDesign = (id: string) => { setDesignId(id); setDesign(id); };
+  const patchMotion = (m: MotionMode) => { updateMotionMode(m); setMotionMode(m); applyMotionSettings(m); };
   const patchTypography = (role: keyof TypographySettings, font: TypographyFontId) => {
     const next = { ...typography, [role]: font };
     updateAppSettings(c => ({ general: { ...c.general, typography: next } }));
@@ -287,6 +290,15 @@ export default function SettingsPage() {
             </select>
           </div>
           <p className="set-note">也可在大屏右上角“切换风格”里实时预览切换；此处设置作为本机默认。</p>
+          <div className="set-row">
+            <label className="set-label">动效模式</label>
+            <select className="set-input" value={motionMode} onChange={e => patchMotion(e.target.value as MotionMode)}>
+              <option value="auto">自动（跟随系统“减少动态效果”偏好）</option>
+              <option value="best-effects">最佳效果（开满动效）</option>
+              <option value="best-performance">最佳性能（关闭动画 / 过渡 / 毛玻璃）</option>
+            </select>
+          </div>
+          <p className="set-note">最佳效果适合日常展示与体验；一体机、低端设备或投影出现卡顿时可切换到最佳性能，全局关闭动画、过渡与毛玻璃。</p>
         </section>
 
         {/* ―― 字体分区 ―― */}
@@ -350,7 +362,7 @@ export default function SettingsPage() {
             <h2 className="set-card__title">🛰️ 使用遥测</h2>
             <Switch checked={teleOn} onChange={toggleTele} />
           </div>
-          <p className="set-card__lead">向作者端上报匿名部署/运行数据（版本、主机、时区、地区、匿名 IP 哈希）；不含考试内容与个人信息。</p>
+          <p className="set-card__lead">���作者端上报匿名部署/运行数据（版本、主机、时区、地区、匿名 IP 哈希）；不含考试内容与个人信息。</p>
           <ul className="set-status__list">
             <li><span>同意状态</span><b>{consent === 'granted' ? '已同意' : consent === 'denied' ? '已拒绝' : '未决定'}</b></li>
             <li><span>实例 ID</span><b>{instId.slice(0, 8)}…</b></li>

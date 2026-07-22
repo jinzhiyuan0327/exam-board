@@ -3,9 +3,11 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/fonts.css';
 import './styles/design-fonts.css';
+import './styles/motion.css';
 import { startTimeSyncManager } from './utils/timeSync';
 import { registerPwa } from './services/pwa';
 import { bindTypographySettings } from './utils/typographySettings';
+import { bindMotionSettings } from './utils/motionSettings';
 import { reportPerformance } from './services/telemetry';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 
@@ -23,7 +25,14 @@ document.head.appendChild(style);
 
 startTimeSyncManager();
 bindTypographySettings();
-registerPwa();
+bindMotionSettings();
+// 仅生产环境注册 Service Worker：开发环境（vite dev）下残留的生产 SW 会拦截
+// Vite 的模块请求、用旧缓存覆盖 dev 资源，导致 `npm run dev` 打开后白屏。
+if (import.meta.env.PROD) {
+  registerPwa();
+} else if ('serviceWorker' in navigator) {
+  void navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+}
 window.addEventListener('load', () => window.setTimeout(() => { void reportPerformance(); }, 0), { once: true });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
